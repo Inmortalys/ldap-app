@@ -8,6 +8,85 @@ class LdapService {
     }
 
     /**
+     * Get domain password policy (maxPwdAge)
+     * @returns {Promise<number>} Maximum password age in days
+     */
+    async getDomainPasswordPolicy() {
+        try {
+            if (!this.client) {
+                await this.connect();
+            }
+
+            // Extract domain DN from baseDN or adminDN
+            const domainDN = this.config.baseDN || this.extractDomainDN(this.config.adminDN);
+
+            return new Promise((resolve, reject) => {
+                const opts = {
+                    filter: '(objectClass=domain)',
+                    scope: 'base',
+                    attributes: ['maxPwdAge'],
+                };
+
+                this.client.search(domainDN, opts, (err, res) => {
+                    if (err) {
+                        console.error('Error querying domain password policy:', err);
+                        reject(err);
+                        return;
+                    }
+
+                    let maxPwdAge = null;
+
+                    res.on('searchEntry', (entry) => {
+                        const obj = entry.pojo || entry.object || entry;
+                        if (obj.attributes) {
+                            obj.attributes.forEach(attr => {
+                                if (attr.type.toLowerCase() === 'maxpwdage' && attr.values.length > 0) {
+                                    // maxPwdAge is stored as a negative 100-nanosecond interval
+                                    const nanoseconds = Math.abs(parseInt(attr.values[0]));
+                                    // Convert to days: nanoseconds / 10000 = milliseconds, / 1000 = seconds, / 60 = minutes, / 60 = hours, / 24 = days
+                                    maxPwdAge = Math.floor(nanoseconds / 10000 / 1000 / 60 / 60 / 24);
+                                }
+                            });
+                        }
+                    });
+
+                    res.on('error', (err) => {
+                        console.error('Error in domain policy search:', err);
+                        reject(err);
+                    });
+
+                    res.on('end', (result) => {
+                        if (result.status !== 0) {
+                            reject(new Error(`Domain policy query failed with status: ${result.status}`));
+                        } else if (maxPwdAge === null) {
+                            console.warn('maxPwdAge not found in domain policy, using default 183 days');
+                            resolve(183); // Default based on user's domain
+                        } else {
+                            console.log(`Domain password policy: maxPwdAge = ${maxPwdAge} days`);
+                            resolve(maxPwdAge);
+                        }
+                    });
+                });
+            });
+        } catch (error) {
+            console.error('Error getting domain password policy:', error);
+            // Return default value instead of throwing
+            return 183;
+        }
+    }
+
+    /**
+     * Extract domain DN from a user DN
+     * @param {string} dn - Distinguished Name
+     * @returns {string} Domain DN
+     */
+    extractDomainDN(dn) {
+        // Extract DC components from DN
+        const dcParts = dn.match(/DC=[^,]+/gi);
+        return dcParts ? dcParts.join(',') : dn;
+    }
+
+    /**
      * Connect to LDAP server using configuration from PocketBase
      * @returns {Promise<ldap.Client>} Connected LDAP client
      */
@@ -31,12 +110,24 @@ class LdapService {
                 });
 
                 // Bind with admin credentials
-                this.client.bind(this.config.adminDN, this.config.adminPassword, (err) => {
+                this.client.bind(this.config.adminDN, this.config.adminPassword, async (err) => {
                     if (err) {
                         console.error('LDAP bind error:', err);
                         reject(err);
                     } else {
                         console.log('Successfully connected to LDAP server');
+
+                        // Query domain password policy if not already cached
+                        if (!this.config.maxPwdAge) {
+                            try {
+                                this.config.maxPwdAge = await this.getDomainPasswordPolicy();
+                                console.log(`Cached maxPwdAge: ${this.config.maxPwdAge} days`);
+                            } catch (error) {
+                                console.warn('Failed to query domain password policy, using default 183 days');
+                                this.config.maxPwdAge = 183;
+                            }
+                        }
+
                         resolve(this.client);
                     }
                 });
@@ -221,8 +312,8 @@ class LdapService {
             const passwordNeverExpires = !!(uac & 0x10000);
 
             if (!passwordNeverExpires) {
-                // AD default password max age is typically 42 days, but we'll use 90 as a safer default
-                const maxAge = 90;
+                // Use maxPwdAge from domain policy (queried during connect)
+                const maxAge = this.config.maxPwdAge || 183; // Fallback to 183 days
                 user.pwdExpiryDate = new Date(user.pwdChangedTime.getTime() + maxAge * 24 * 60 * 60 * 1000);
                 user.daysUntilExpiry = Math.floor((user.pwdExpiryDate - new Date()) / (24 * 60 * 60 * 1000));
             }
