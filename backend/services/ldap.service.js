@@ -154,18 +154,28 @@ class LdapService {
      * @returns {Object} Parsed user object
      */
     parseUserEntry(entry) {
-        const obj = entry.pojo;
-        const attrs = obj.attributes.reduce((acc, attr) => {
-            acc[attr.type] = attr.values.length === 1 ? attr.values[0] : attr.values;
-            return acc;
-        }, {});
+        const obj = entry.pojo || entry.object || entry;
+        const attrs = {};
+
+        // Convertir atributos a objeto simple
+        if (obj.attributes) {
+            obj.attributes.forEach(attr => {
+                // Manejar atributos con múltiples valores
+                if (Array.isArray(attr.values) && attr.values.length > 0) {
+                    // Normalize to lowercase to avoid case sensitivity issues
+                    attrs[attr.type.toLowerCase()] = attr.values.length === 1 ? attr.values[0] : attr.values;
+                }
+            });
+        }
+
+        console.log('Parsed attributes:', JSON.stringify(attrs, null, 2));
 
         const user = {
             dn: obj.objectName,
             cn: attrs.cn || '',
-            uid: attrs.uid || attrs.sAMAccountName || '',
+            uid: attrs.uid || attrs.samaccountname || '',
             sn: attrs.sn || '',
-            givenName: attrs.givenName || '',
+            givenName: attrs.givenname || '',
             mail: attrs.mail || '',
             isLocked: false,
             isDisabled: false,
@@ -176,8 +186,8 @@ class LdapService {
         };
 
         // Check userAccountControl flags (Active Directory)
-        if (attrs.userAccountControl) {
-            const uac = parseInt(attrs.userAccountControl);
+        if (attrs.useraccountcontrol) {
+            const uac = parseInt(attrs.useraccountcontrol);
 
             // ACCOUNTDISABLE (0x0002)
             if (uac & 0x0002) {
@@ -191,23 +201,23 @@ class LdapService {
         }
 
         // Check if account is locked (Active Directory lockoutTime)
-        if (attrs.lockoutTime && attrs.lockoutTime !== '0') {
+        if (attrs.lockouttime && attrs.lockouttime !== '0') {
             user.isLocked = true;
-            user.lockoutTime = this.parseADTimestamp(attrs.lockoutTime);
+            user.lockoutTime = this.parseADTimestamp(attrs.lockouttime);
         }
 
         // Check if account is locked (OpenLDAP)
-        if (attrs.pwdAccountLockedTime) {
+        if (attrs.pwdaccountlockedtime) {
             user.isLocked = true;
-            user.lockoutTime = new Date(attrs.pwdAccountLockedTime);
+            user.lockoutTime = new Date(attrs.pwdaccountlockedtime);
         }
 
         // Parse password changed time and calculate expiry (Active Directory)
-        if (attrs.pwdLastSet && attrs.pwdLastSet !== '0') {
-            user.pwdChangedTime = this.parseADTimestamp(attrs.pwdLastSet);
+        if (attrs.pwdlastset && attrs.pwdlastset !== '0') {
+            user.pwdChangedTime = this.parseADTimestamp(attrs.pwdlastset);
 
             // Check DONT_EXPIRE_PASSWORD (0x10000) in userAccountControl
-            const uac = attrs.userAccountControl ? parseInt(attrs.userAccountControl) : 0;
+            const uac = attrs.useraccountcontrol ? parseInt(attrs.useraccountcontrol) : 0;
             const passwordNeverExpires = !!(uac & 0x10000);
 
             if (!passwordNeverExpires) {
@@ -219,14 +229,14 @@ class LdapService {
         }
 
         // Parse password changed time (OpenLDAP)
-        if (attrs.pwdChangedTime) {
-            user.pwdChangedTime = this.parseGeneralizedTime(attrs.pwdChangedTime);
+        if (attrs.pwdchangedtime) {
+            user.pwdChangedTime = this.parseGeneralizedTime(attrs.pwdchangedtime);
         }
 
         // Parse shadow account expiry (Unix/Linux LDAP)
-        if (attrs.shadowLastChange && attrs.shadowMax) {
-            const lastChange = parseInt(attrs.shadowLastChange);
-            const maxDays = parseInt(attrs.shadowMax);
+        if (attrs.shadowlastchange && attrs.shadowmax) {
+            const lastChange = parseInt(attrs.shadowlastchange);
+            const maxDays = parseInt(attrs.shadowmax);
             const changedDate = new Date(lastChange * 24 * 60 * 60 * 1000);
             user.pwdChangedTime = changedDate;
             user.pwdExpiryDate = new Date(changedDate.getTime() + maxDays * 24 * 60 * 60 * 1000);
