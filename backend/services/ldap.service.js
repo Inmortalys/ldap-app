@@ -168,13 +168,29 @@ class LdapService {
             givenName: attrs.givenName || '',
             mail: attrs.mail || '',
             isLocked: false,
+            isDisabled: false,
             lockoutTime: null,
             pwdChangedTime: null,
             pwdExpiryDate: null,
             daysUntilExpiry: null,
         };
 
-        // Check if account is locked (Active Directory)
+        // Check userAccountControl flags (Active Directory)
+        if (attrs.userAccountControl) {
+            const uac = parseInt(attrs.userAccountControl);
+
+            // ACCOUNTDISABLE (0x0002)
+            if (uac & 0x0002) {
+                user.isDisabled = true;
+            }
+
+            // LOCKOUT (0x0010) - Note: This is not always reliable in UAC, better to check lockoutTime
+            if (uac & 0x0010) {
+                user.isLocked = true;
+            }
+        }
+
+        // Check if account is locked (Active Directory lockoutTime)
         if (attrs.lockoutTime && attrs.lockoutTime !== '0') {
             user.isLocked = true;
             user.lockoutTime = this.parseADTimestamp(attrs.lockoutTime);
@@ -189,10 +205,17 @@ class LdapService {
         // Parse password changed time and calculate expiry (Active Directory)
         if (attrs.pwdLastSet && attrs.pwdLastSet !== '0') {
             user.pwdChangedTime = this.parseADTimestamp(attrs.pwdLastSet);
-            // AD default password max age is typically 42 days, but should be configured
-            const maxAge = 42; // This should come from domain policy
-            user.pwdExpiryDate = new Date(user.pwdChangedTime.getTime() + maxAge * 24 * 60 * 60 * 1000);
-            user.daysUntilExpiry = Math.floor((user.pwdExpiryDate - new Date()) / (24 * 60 * 60 * 1000));
+
+            // Check DONT_EXPIRE_PASSWORD (0x10000) in userAccountControl
+            const uac = attrs.userAccountControl ? parseInt(attrs.userAccountControl) : 0;
+            const passwordNeverExpires = !!(uac & 0x10000);
+
+            if (!passwordNeverExpires) {
+                // AD default password max age is typically 42 days, but we'll use 90 as a safer default
+                const maxAge = 90;
+                user.pwdExpiryDate = new Date(user.pwdChangedTime.getTime() + maxAge * 24 * 60 * 60 * 1000);
+                user.daysUntilExpiry = Math.floor((user.pwdExpiryDate - new Date()) / (24 * 60 * 60 * 1000));
+            }
         }
 
         // Parse password changed time (OpenLDAP)

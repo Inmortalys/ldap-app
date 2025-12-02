@@ -8,13 +8,8 @@
   </div>
 
   <div class="search-bar">
-    <input
-      type="text"
-      [(ngModel)]="searchTerm"
-      (input)="filterUsers()"
-      placeholder="🔍 Buscar por nombre, usuario, email o DN..."
-      class="search-input"
-    />
+    <input type="text" [(ngModel)]="searchTerm" (input)="filterUsers()"
+      placeholder="🔍 Buscar por nombre, usuario, email o DN..." class="search-input" />
   </div>
 
   <div *ngIf="error" class="error-message">
@@ -47,24 +42,25 @@
         <tr *ngFor="let user of filteredUsers" [class.locked-row]="user.isLocked">
           <td>
             <span *ngIf="user.isLocked" class="status-badge locked">🔒 Bloqueado</span>
-            <span *ngIf="!user.isLocked" class="status-badge active">✅ Activo</span>
+            <span *ngIf="user.isDisabled" class="status-badge disabled">🚫 Deshabilitado</span>
+            <span *ngIf="!user.isLocked && !user.isDisabled" class="status-badge active">✅ Activo</span>
           </td>
           <td class="user-id">{{ user.uid }}</td>
           <td>{{ user.cn }}</td>
           <td>{{ user.mail || 'N/A' }}</td>
           <td>{{ formatDate(user.pwdChangedTime) }}</td>
           <td>
-            <span [class]="getExpiryClass(user)" class="expiry-badge">
+            <span *ngIf="user.daysUntilExpiry !== null && user.daysUntilExpiry !== undefined"
+              [class]="getExpiryClass(user)" class="expiry-badge">
               {{ getExpiryText(user) }}
+            </span>
+            <span *ngIf="user.daysUntilExpiry === null || user.daysUntilExpiry === undefined"
+              class="expiry-badge never-expires">
+              ♾️ Nunca caduca
             </span>
           </td>
           <td>
-            <button
-              *ngIf="user.isLocked"
-              class="btn-unlock"
-              (click)="unlockUser(user)"
-              title="Desbloquear usuario"
-            >
+            <button *ngIf="user.isLocked" class="btn-unlock" (click)="unlockUser(user)" title="Desbloquear usuario">
               🔓 Desbloquear
             </button>
             <span *ngIf="!user.isLocked" class="no-action">—</span>

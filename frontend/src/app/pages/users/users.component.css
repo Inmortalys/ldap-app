@@ -185,6 +185,11 @@
   color: #991b1b;
 }
 
+.status-badge.disabled {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
 .expiry-badge {
   display: inline-flex;
   align-items: center;
@@ -208,6 +213,11 @@
 .expiry-badge.expiring-warning {
   background: #fef3c7;
   color: #92400e;
+}
+
+.expiry-badge.never-expires {
+  background: #f1f5f9;
+  color: #475569;
 }
 
 .btn-unlock {

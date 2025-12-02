@@ -6,6 +6,7 @@ export interface LdapUser {
     givenName?: string;
     mail?: string;
     isLocked: boolean;
+    isDisabled?: boolean;
     lockoutTime?: Date | null;
     pwdChangedTime?: Date | null;
     pwdExpiryDate?: Date | null;
