@@ -1,0 +1,27 @@
+<div class="app-container">
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <h1>🔐 LDAP Manager</h1>
+    </div>
+
+    <div class="nav-links">
+      <a routerLink="/users" routerLinkActive="active" class="nav-link">
+        <span class="icon">👥</span>
+        <span class="label">Usuarios</span>
+      </a>
+
+      <a routerLink="/settings" routerLinkActive="active" class="nav-link">
+        <span class="icon">⚙️</span>
+        <span class="label">Configuración</span>
+      </a>
+    </div>
+
+    <div class="sidebar-footer">
+      <p>LDAP Management v1.0</p>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

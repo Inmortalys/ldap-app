@@ -1,0 +1,80 @@
+<div class="users-container">
+  <div class="header">
+    <h1>👥 Usuarios LDAP</h1>
+    <button class="btn-refresh" (click)="loadUsers()" [disabled]="loading">
+      <span *ngIf="!loading">🔄 Actualizar</span>
+      <span *ngIf="loading">⏳ Cargando...</span>
+    </button>
+  </div>
+
+  <div class="search-bar">
+    <input
+      type="text"
+      [(ngModel)]="searchTerm"
+      (input)="filterUsers()"
+      placeholder="🔍 Buscar por nombre, usuario, email o DN..."
+      class="search-input"
+    />
+  </div>
+
+  <div *ngIf="error" class="error-message">
+    ⚠️ {{ error }}
+  </div>
+
+  <div *ngIf="loading" class="loading-spinner">
+    <div class="spinner"></div>
+    <p>Cargando usuarios desde LDAP...</p>
+  </div>
+
+  <div *ngIf="!loading && !error && filteredUsers.length === 0" class="no-results">
+    <p>No se encontraron usuarios</p>
+  </div>
+
+  <div *ngIf="!loading && !error && filteredUsers.length > 0" class="table-container">
+    <table class="users-table">
+      <thead>
+        <tr>
+          <th>Estado</th>
+          <th>Usuario</th>
+          <th>Nombre</th>
+          <th>Email</th>
+          <th>Contraseña cambiada</th>
+          <th>Caduca en</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let user of filteredUsers" [class.locked-row]="user.isLocked">
+          <td>
+            <span *ngIf="user.isLocked" class="status-badge locked">🔒 Bloqueado</span>
+            <span *ngIf="!user.isLocked" class="status-badge active">✅ Activo</span>
+          </td>
+          <td class="user-id">{{ user.uid }}</td>
+          <td>{{ user.cn }}</td>
+          <td>{{ user.mail || 'N/A' }}</td>
+          <td>{{ formatDate(user.pwdChangedTime) }}</td>
+          <td>
+            <span [class]="getExpiryClass(user)" class="expiry-badge">
+              {{ getExpiryText(user) }}
+            </span>
+          </td>
+          <td>
+            <button
+              *ngIf="user.isLocked"
+              class="btn-unlock"
+              (click)="unlockUser(user)"
+              title="Desbloquear usuario"
+            >
+              🔓 Desbloquear
+            </button>
+            <span *ngIf="!user.isLocked" class="no-action">—</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div *ngIf="!loading && !error && filteredUsers.length > 0" class="footer-info">
+    <p>Mostrando {{ filteredUsers.length }} de {{ users.length }} usuarios</p>
+  </div>
+</div>
