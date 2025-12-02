@@ -55,7 +55,7 @@ cp .env.example .env
 Edita `.env` y configura:
 ```env
 PORT=3000
-POCKETBASE_URL=http://127.0.0.1:8090
+POCKETBASE_URL=https://pocketbase.tailsoca.duckdns.org
 ```
 
 ### 3. Configurar Frontend
@@ -76,7 +76,7 @@ cd pocketbase
 ./pocketbase serve
 ```
 
-4. Accede a `http://127.0.0.1:8090/_/` y crea una cuenta de administrador
+4. Accede a `https://pocketbase.tailsoca.duckdns.org/_/` y crea una cuenta de administrador
 5. Importa el schema desde `pb_schema.json` o crea manualmente las colecciones:
 
 #### Colección: `ldap_config`

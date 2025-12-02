@@ -2,7 +2,7 @@ import PocketBase from 'pocketbase';
 
 class PocketBaseService {
   constructor() {
-    this.pb = new PocketBase(process.env.POCKETBASE_URL || 'http://127.0.0.1:8090');
+    this.pb = new PocketBase(process.env.POCKETBASE_URL || 'https://pocketbase.tailsoca.duckdns.org');
   }
 
   /**

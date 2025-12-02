@@ -32,7 +32,7 @@ cd pocketbase
 ```
 
 **Primera vez:**
-1. Accede a `http://127.0.0.1:8090/_/`
+1. Accede a `https://pocketbase.tailsoca.duckdns.org/_/`
 2. Crea una cuenta de administrador
 3. Ve a **Collections** → **Import collections**
 4. Importa el archivo `pb_schema.json` que está en la carpeta `pocketbase/`
@@ -129,7 +129,7 @@ ng serve
 |----------|--------|-----|
 | Backend | 3000 | http://localhost:3000 |
 | Frontend | 4200 | http://localhost:4200 |
-| PocketBase | 8090 | http://127.0.0.1:8090 |
+| PocketBase | 80 | https://pocketbase.tailsoca.duckdns.org |
 
 ---
 
