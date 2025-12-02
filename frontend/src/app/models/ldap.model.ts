@@ -1,7 +1,7 @@
 export interface LdapUser {
     dn: string;
     cn: string;
-    uid: string;
+    sAMAccountName: string;
     sn?: string;
     givenName?: string;
     mail?: string;

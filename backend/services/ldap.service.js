@@ -191,7 +191,7 @@ class LdapService {
                     attributes: [
                         'dn',
                         'cn',
-                        'uid',
+                        'sAMAccountName',
                         'sn',
                         'givenName',
                         'mail',
@@ -264,7 +264,7 @@ class LdapService {
         const user = {
             dn: obj.objectName,
             cn: attrs.cn || '',
-            uid: attrs.uid || attrs.samaccountname || '',
+            sAMAccountName: attrs.samaccountname,
             sn: attrs.sn || '',
             givenName: attrs.givenname || '',
             mail: attrs.mail || '',

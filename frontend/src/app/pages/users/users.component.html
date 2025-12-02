@@ -61,7 +61,7 @@
             <span *ngIf="user.isDisabled" class="status-badge disabled">🚫 Deshabilitado</span>
             <span *ngIf="!user.isLocked && !user.isDisabled" class="status-badge active">✅ Activo</span>
           </td>
-          <td class="user-id">{{ getUserIdentifier(user) }}</td>
+          <td class="user-id">{{ user.sAMAccountName }}</td>
           <td>{{ user.cn }}</td>
           <td>{{ user.mail || 'N/A' }}</td>
           <td>{{ formatDate(user.pwdChangedTime) }}</td>

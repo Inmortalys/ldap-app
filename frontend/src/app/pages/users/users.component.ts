@@ -70,7 +70,7 @@ export class UsersComponent implements OnInit {
       const term = this.searchTerm.toLowerCase();
       filtered = filtered.filter(user =>
         user.cn.toLowerCase().includes(term) ||
-        user.uid.toLowerCase().includes(term) ||
+        user.sAMAccountName.toLowerCase().includes(term) ||
         user.dn.toLowerCase().includes(term) ||
         (user.mail && user.mail.toLowerCase().includes(term))
       );
@@ -129,17 +129,17 @@ export class UsersComponent implements OnInit {
     return new Date(date).toLocaleDateString('es-ES');
   }
 
-  getUserIdentifier(user: LdapUser): string {
-    // Try to get samaccountname from uid, or fallback to cn
-    if (user.uid && user.uid.trim()) {
-      return user.uid;
-    }
-    // For AD users, extract the first part of CN (usually the username)
-    if (user.cn) {
-      return user.cn.split(' ')[0];
-    }
-    return 'N/A';
-  }
+  // getUserIdentifier(user: LdapUser): string {
+  //   // Try to get samaccountname from uid, or fallback to cn
+  //   if (user.uid && user.uid.trim()) {
+  //     return user.uid;
+  //   }
+  //   // For AD users, extract the first part of CN (usually the username)
+  //   if (user.cn) {
+  //     return user.cn.split(' ')[0];
+  //   }
+  //   return 'N/A';
+  // }
 
   formatExpiryDate(user: LdapUser): string {
     if (!user.pwdExpiryDate) return 'Nunca';
