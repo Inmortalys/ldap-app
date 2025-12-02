@@ -12,6 +12,21 @@
       placeholder="🔍 Buscar por nombre, usuario, email o DN..." class="search-input" />
   </div>
 
+  <div class="filter-bar">
+    <button class="filter-btn" [class.active]="statusFilter === 'all'" (click)="setStatusFilter('all')">
+      Todos
+    </button>
+    <button class="filter-btn" [class.active]="statusFilter === 'active'" (click)="setStatusFilter('active')">
+      ✅ Activos
+    </button>
+    <button class="filter-btn" [class.active]="statusFilter === 'locked'" (click)="setStatusFilter('locked')">
+      🔒 Bloqueados
+    </button>
+    <button class="filter-btn" [class.active]="statusFilter === 'disabled'" (click)="setStatusFilter('disabled')">
+      🚫 Deshabilitados
+    </button>
+  </div>
+
   <div *ngIf="error" class="error-message">
     ⚠️ {{ error }}
   </div>
@@ -35,6 +50,7 @@
           <th>Email</th>
           <th>Contraseña cambiada</th>
           <th>Caduca en</th>
+          <th>Fecha de expiración</th>
           <th>Acciones</th>
         </tr>
       </thead>
@@ -45,7 +61,7 @@
             <span *ngIf="user.isDisabled" class="status-badge disabled">🚫 Deshabilitado</span>
             <span *ngIf="!user.isLocked && !user.isDisabled" class="status-badge active">✅ Activo</span>
           </td>
-          <td class="user-id">{{ user.uid }}</td>
+          <td class="user-id">{{ getUserIdentifier(user) }}</td>
           <td>{{ user.cn }}</td>
           <td>{{ user.mail || 'N/A' }}</td>
           <td>{{ formatDate(user.pwdChangedTime) }}</td>
@@ -59,6 +75,7 @@
               ♾️ Nunca caduca
             </span>
           </td>
+          <td>{{ formatExpiryDate(user) }}</td>
           <td>
             <button *ngIf="user.isLocked" class="btn-unlock" (click)="unlockUser(user)" title="Desbloquear usuario">
               🔓 Desbloquear

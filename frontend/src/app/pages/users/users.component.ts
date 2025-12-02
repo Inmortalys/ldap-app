@@ -17,6 +17,7 @@ export class UsersComponent implements OnInit {
   loading = false;
   error: string | null = null;
   searchTerm = '';
+  statusFilter: string = 'all'; // 'all', 'active', 'locked', 'disabled'
 
   constructor(private ldapService: LdapService) { }
 
@@ -48,18 +49,39 @@ export class UsersComponent implements OnInit {
   }
 
   filterUsers(): void {
-    if (!this.searchTerm.trim()) {
-      this.filteredUsers = this.users;
-      return;
+    let filtered = this.users;
+
+    // Apply status filter
+    if (this.statusFilter !== 'all') {
+      filtered = filtered.filter(user => {
+        if (this.statusFilter === 'active') {
+          return !user.isLocked && !user.isDisabled;
+        } else if (this.statusFilter === 'locked') {
+          return user.isLocked;
+        } else if (this.statusFilter === 'disabled') {
+          return user.isDisabled;
+        }
+        return true;
+      });
     }
 
-    const term = this.searchTerm.toLowerCase();
-    this.filteredUsers = this.users.filter(user =>
-      user.cn.toLowerCase().includes(term) ||
-      user.uid.toLowerCase().includes(term) ||
-      user.dn.toLowerCase().includes(term) ||
-      (user.mail && user.mail.toLowerCase().includes(term))
-    );
+    // Apply search term filter
+    if (this.searchTerm.trim()) {
+      const term = this.searchTerm.toLowerCase();
+      filtered = filtered.filter(user =>
+        user.cn.toLowerCase().includes(term) ||
+        user.uid.toLowerCase().includes(term) ||
+        user.dn.toLowerCase().includes(term) ||
+        (user.mail && user.mail.toLowerCase().includes(term))
+      );
+    }
+
+    this.filteredUsers = filtered;
+  }
+
+  setStatusFilter(status: string): void {
+    this.statusFilter = status;
+    this.filterUsers();
   }
 
   unlockUser(user: LdapUser): void {
@@ -105,5 +127,22 @@ export class UsersComponent implements OnInit {
   formatDate(date: Date | null | undefined): string {
     if (!date) return 'N/A';
     return new Date(date).toLocaleDateString('es-ES');
+  }
+
+  getUserIdentifier(user: LdapUser): string {
+    // Try to get samaccountname from uid, or fallback to cn
+    if (user.uid && user.uid.trim()) {
+      return user.uid;
+    }
+    // For AD users, extract the first part of CN (usually the username)
+    if (user.cn) {
+      return user.cn.split(' ')[0];
+    }
+    return 'N/A';
+  }
+
+  formatExpiryDate(user: LdapUser): string {
+    if (!user.pwdExpiryDate) return 'Nunca';
+    return new Date(user.pwdExpiryDate).toLocaleDateString('es-ES');
   }
 }
