@@ -1,78 +1,82 @@
 .app-container {
     display: flex;
     min-height: 100vh;
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    background: #f8fafc;
 }
 
 .sidebar {
-    width: 250px;
+    width: 240px;
+    /* Slightly narrower */
     background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
     color: white;
     display: flex;
     flex-direction: column;
-    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.05);
     position: fixed;
     height: 100vh;
     left: 0;
     top: 0;
+    z-index: 1000;
 }
 
 .sidebar-header {
-    padding: 2rem 1.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .sidebar-header h1 {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
     margin: 0;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    letter-spacing: -0.025em;
 }
 
 .nav-links {
     flex: 1;
-    padding: 1.5rem 0;
+    padding: 1rem 0;
 }
 
 .nav-link {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem 1.5rem;
-    color: #cbd5e1;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    color: #94a3b8;
     text-decoration: none;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     border-left: 3px solid transparent;
-    margin: 0.25rem 0;
+    margin: 0.125rem 0;
 }
 
 .nav-link:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.03);
     color: white;
     border-left-color: #667eea;
 }
 
 .nav-link.active {
-    background: rgba(102, 126, 234, 0.15);
+    background: rgba(102, 126, 234, 0.1);
     color: white;
     border-left-color: #667eea;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .nav-link .icon {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
+    opacity: 0.9;
 }
 
 .nav-link .label {
-    font-size: 1rem;
+    font-size: 0.95rem;
 }
 
 .sidebar-footer {
     padding: 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
     text-align: center;
 }
 
@@ -84,24 +88,24 @@
 
 .main-content {
     flex: 1;
-    margin-left: 250px;
+    margin-left: 240px;
     min-height: 100vh;
+    padding: 2rem;
 }
 
 @media (max-width: 768px) {
     .sidebar {
         width: 200px;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
     }
 
     .main-content {
-        margin-left: 200px;
-    }
-
-    .sidebar-header h1 {
-        font-size: 1.2rem;
-    }
-
-    .nav-link {
-        padding: 0.875rem 1rem;
+        margin-left: 0;
+        padding: 1rem;
     }
 }
