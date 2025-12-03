@@ -95,13 +95,18 @@ class LdapService {
             // Get config from PocketBase
             this.config = await pocketbaseService.getLdapConfig();
 
-            const ldapUrl = `${this.config.server}:${this.config.port}`;
+            // Determine protocol based on port
+            const protocol = this.config.port === 636 ? 'ldaps' : 'ldap';
+            const ldapUrl = `${protocol}://${this.config.server}:${this.config.port}`;
 
             return new Promise((resolve, reject) => {
                 this.client = ldap.createClient({
                     url: ldapUrl,
                     timeout: 5000,
                     connectTimeout: 10000,
+                    tlsOptions: {
+                        rejectUnauthorized: false // Allow self-signed certs
+                    }
                 });
 
                 this.client.on('error', (err) => {
@@ -151,13 +156,20 @@ class LdapService {
                 this.config = await pocketbaseService.getLdapConfig();
             }
 
-            const ldapUrl = `${this.config.server}:${this.config.port}`;
+            // Determine protocol based on port
+            const protocol = this.config.port === 636 ? 'ldaps' : 'ldap';
+            const ldapUrl = `${protocol}://${this.config.server}:${this.config.port}`;
+
+            console.log(`Connecting to LDAP: ${ldapUrl}`);
 
             return new Promise((resolve, reject) => {
                 const authClient = ldap.createClient({
                     url: ldapUrl,
                     timeout: 5000,
                     connectTimeout: 10000,
+                    tlsOptions: {
+                        rejectUnauthorized: false // Allow self-signed certs for internal domains
+                    }
                 });
 
                 authClient.on('error', (err) => {
@@ -190,10 +202,15 @@ class LdapService {
                     console.log(`Successfully authenticated user: ${username}`);
 
                     // Search for user details
-                    const searchBase = this.config.searchBase || this.config.baseDN;
+                    // Use domain root as search base to ensure we find users in any OU
+                    const searchBase = this.extractDomainDN(this.config.baseDN);
+
                     const searchFilter = username.includes('@') || username.includes('DC=')
                         ? `(userPrincipalName=${username})`
                         : `(sAMAccountName=${username})`;
+
+                    console.log(`Searching for user details in: ${searchBase}`);
+                    console.log(`Search filter: ${searchFilter}`);
 
                     const opts = {
                         filter: searchFilter,
@@ -268,6 +285,19 @@ class LdapService {
     }
 
     /**
+     * Extract domain DN from full DN (e.g., "OU=Users,DC=example,DC=com" -> "DC=example,DC=com")
+     * @param {string} dn - Distinguished Name
+     * @returns {string} Domain DN
+     */
+    extractDomainDN(dn) {
+        const dcParts = dn.match(/DC=[^,]+/gi);
+        if (dcParts) {
+            return dcParts.join(',');
+        }
+        return dn;
+    }
+
+    /**
      * Extract domain name from DN
      * @param {string} dn - Distinguished Name
      * @returns {string} Domain name (e.g., "example.com")
@@ -292,13 +322,18 @@ class LdapService {
                 this.config = await pocketbaseService.getLdapConfig();
             }
 
-            const ldapUrl = `${this.config.server}:${this.config.port}`;
+            // Determine protocol based on port
+            const protocol = this.config.port === 636 ? 'ldaps' : 'ldap';
+            const ldapUrl = `${protocol}://${this.config.server}:${this.config.port}`;
 
             return new Promise((resolve, reject) => {
                 const userClient = ldap.createClient({
                     url: ldapUrl,
                     timeout: 5000,
                     connectTimeout: 10000,
+                    tlsOptions: {
+                        rejectUnauthorized: false // Allow self-signed certs
+                    }
                 });
 
                 userClient.on('error', (err) => {
