@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { LdapService } from '../../services/ldap.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
     selector: 'app-login',
@@ -18,7 +18,7 @@ export class LoginComponent {
     error = '';
 
     constructor(
-        private ldapService: LdapService,
+        private authService: AuthService,
         private router: Router
     ) { }
 
@@ -31,13 +31,11 @@ export class LoginComponent {
         this.loading = true;
         this.error = '';
 
-        this.ldapService.login(this.username, this.password).subscribe({
-            next: (response) => {
+        this.authService.login(this.username, this.password).subscribe({
+            next: (response: any) => {
                 this.loading = false;
                 if (response.success && response.token) {
-                    // Store token and user info
-                    localStorage.setItem('token', response.token);
-                    localStorage.setItem('user', JSON.stringify(response.user));
+                    // Token is already stored by AuthService tap operator
 
                     // Redirect to dashboard/users
                     this.router.navigate(['/users']);
@@ -45,7 +43,7 @@ export class LoginComponent {
                     this.error = 'Error en el inicio de sesión';
                 }
             },
-            error: (err) => {
+            error: (err: any) => {
                 this.loading = false;
                 console.error('Login error:', err);
                 this.error = err.error?.error || 'Credenciales incorrectas o error de conexión';
