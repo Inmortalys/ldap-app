@@ -371,62 +371,102 @@ class LdapService {
                 this.config = configService.getLdapConfig();
             }
 
-            const base = searchBase || this.config.searchBase || this.config.baseDN;
+            // If searchBase is explicitly provided, use it (single search)
+            if (searchBase) {
+                return this.performSearch(searchClient, searchBase, filter);
+            }
 
-            return new Promise((resolve, reject) => {
-                const users = [];
-                const opts = {
-                    filter: filter,
-                    scope: 'sub',
-                    attributes: [
-                        'dn',
-                        'cn',
-                        'sAMAccountName',
-                        'sn',
-                        'givenName',
-                        'mail',
-                        'userAccountControl',
-                        'pwdChangedTime',
-                        'pwdLastSet',
-                        'accountExpires',
-                        'lockoutTime',
-                        'pwdAccountLockedTime',
-                        'shadowExpire',
-                        'shadowLastChange',
-                        'shadowMax',
-                    ],
-                };
+            // Otherwise, search across all configured search bases
+            const searchBases = this.config.searchBases || [this.config.searchBase || this.config.baseDN];
 
-                searchClient.search(base, opts, (err, res) => {
-                    if (err) {
-                        console.error('LDAP search error:', err);
-                        reject(err);
-                        return;
-                    }
+            // Search all bases and aggregate results
+            const allUsers = [];
+            const seenDNs = new Set(); // Track DNs to avoid duplicates
 
-                    res.on('searchEntry', (entry) => {
-                        const user = this.parseUserEntry(entry);
-                        users.push(user);
-                    });
+            for (const base of searchBases) {
+                if (!base) continue; // Skip empty bases
 
-                    res.on('error', (err) => {
-                        console.error('LDAP search result error:', err);
-                        reject(err);
-                    });
+                try {
+                    const users = await this.performSearch(searchClient, base, filter);
 
-                    res.on('end', (result) => {
-                        if (result.status !== 0) {
-                            reject(new Error(`LDAP search failed with status: ${result.status}`));
-                        } else {
-                            resolve(users);
+                    // Add users, filtering out duplicates by DN
+                    for (const user of users) {
+                        if (!seenDNs.has(user.dn)) {
+                            seenDNs.add(user.dn);
+                            allUsers.push(user);
                         }
-                    });
-                });
-            });
+                    }
+                } catch (error) {
+                    console.error(`Error searching in base ${base}:`, error);
+                    // Continue with other bases even if one fails
+                }
+            }
+
+            return allUsers;
         } catch (error) {
             console.error('Error searching users:', error);
             throw error;
         }
+    }
+
+    /**
+     * Perform LDAP search on a single search base
+     * @param {Object} client - LDAP client
+     * @param {string} base - Search base DN
+     * @param {string} filter - LDAP filter
+     * @returns {Promise<Array>} Array of user objects
+     */
+    performSearch(client, base, filter) {
+        return new Promise((resolve, reject) => {
+            const users = [];
+            const opts = {
+                filter: filter,
+                scope: 'sub',
+                attributes: [
+                    'dn',
+                    'cn',
+                    'sAMAccountName',
+                    'sn',
+                    'givenName',
+                    'mail',
+                    'userAccountControl',
+                    'pwdChangedTime',
+                    'pwdLastSet',
+                    'accountExpires',
+                    'lockoutTime',
+                    'pwdAccountLockedTime',
+                    'shadowExpire',
+                    'shadowLastChange',
+                    'shadowMax',
+                ],
+            };
+
+            client.search(base, opts, (err, res) => {
+                if (err) {
+                    console.error('LDAP search error:', err);
+                    reject(err);
+                    return;
+                }
+
+                res.on('searchEntry', (entry) => {
+                    const user = this.parseUserEntry(entry);
+                    users.push(user);
+                });
+
+                res.on('error', (err) => {
+                    console.error('LDAP search result error:', err);
+                    reject(err);
+                });
+
+                res.on('end', (result) => {
+                    if (result.status !== 0) {
+                        reject(new Error(`LDAP search failed with status: ${result.status}`));
+                    } else {
+                        resolve(users);
+                    }
+                });
+            });
+        });
     }
 
     /**

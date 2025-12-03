@@ -50,8 +50,16 @@ export class SettingsComponent implements OnInit {
             ...response.config
           };
 
-          // Add default search base to custom list if not present
-          if (this.config.searchBase && !this.customSearchBases.includes(this.config.searchBase)) {
+          // Add all search bases from backend config to custom list
+          if (response.config.searchBases && Array.isArray(response.config.searchBases)) {
+            response.config.searchBases.forEach((base: string) => {
+              if (base && !this.customSearchBases.includes(base)) {
+                this.customSearchBases.push(base);
+              }
+            });
+            this.saveCustomSearchBases();
+          } else if (this.config.searchBase && !this.customSearchBases.includes(this.config.searchBase)) {
+            // Fallback to single searchBase for backward compatibility
             this.customSearchBases.unshift(this.config.searchBase);
             this.saveCustomSearchBases();
           }

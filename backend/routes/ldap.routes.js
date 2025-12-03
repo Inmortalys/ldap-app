@@ -288,7 +288,8 @@ router.get('/config', async (req, res) => {
             server: config.server,
             port: config.port,
             baseDN: config.baseDN,
-            searchBase: config.searchBase,
+            searchBase: config.searchBase, // Keep for backward compatibility
+            searchBases: config.searchBases, // New: array of search bases
         };
 
         res.json({

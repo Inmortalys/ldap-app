@@ -19,7 +19,8 @@ export interface LdapConfig {
     baseDN: string;
     adminDN: string;
     adminPassword?: string;
-    searchBase?: string;
+    searchBase?: string; // Keep for backward compatibility
+    searchBases?: string[]; // New: array of search bases
 }
 
 export interface PasswordPolicy {

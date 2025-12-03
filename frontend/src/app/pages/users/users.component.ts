@@ -63,20 +63,28 @@ export class UsersComponent implements OnInit {
       }
     }
 
-    // Load default config to get the default search base
+    // Load default config to get the search bases
     this.ldapService.getConfig().subscribe({
       next: (response) => {
-        if (response.success && response.config && response.config.searchBase) {
-          const defaultBase = response.config.searchBase;
-
-          // Add default base if not in list
-          if (!this.searchBases.includes(defaultBase)) {
-            this.searchBases.unshift(defaultBase);
+        if (response.success && response.config) {
+          // Use searchBases array if available (new feature)
+          if (response.config.searchBases && Array.isArray(response.config.searchBases)) {
+            response.config.searchBases.forEach((base: string) => {
+              if (base && !this.searchBases.includes(base)) {
+                this.searchBases.push(base);
+              }
+            });
+          } else if (response.config.searchBase) {
+            // Fallback to single searchBase for backward compatibility
+            const defaultBase = response.config.searchBase;
+            if (!this.searchBases.includes(defaultBase)) {
+              this.searchBases.unshift(defaultBase);
+            }
           }
 
-          // Set selected base to default if not set
-          if (!this.selectedSearchBase) {
-            this.selectedSearchBase = defaultBase;
+          // Set selected base to first available if not set
+          if (!this.selectedSearchBase && this.searchBases.length > 0) {
+            this.selectedSearchBase = this.searchBases[0];
           }
         }
       }
