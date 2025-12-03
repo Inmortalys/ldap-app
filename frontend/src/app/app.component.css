@@ -28,7 +28,7 @@
     font-size: 1.25rem;
     font-weight: 700;
     margin: 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #005c97 0%, #363795 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -55,13 +55,13 @@
 .nav-link:hover {
     background: rgba(255, 255, 255, 0.03);
     color: white;
-    border-left-color: #667eea;
+    border-left-color: #005c97;
 }
 
 .nav-link.active {
-    background: rgba(102, 126, 234, 0.1);
+    background: rgba(54, 55, 149, 0.1);
     color: white;
-    border-left-color: #667eea;
+    border-left-color: #363795;
     font-weight: 500;
 }
 
@@ -93,7 +93,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #005c97 0%, #363795 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -110,6 +110,37 @@
 .user-name {
     font-size: 0.875rem;
     font-weight: 600;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-email {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-dn {
+    font-size: 0.65rem;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+    opacity: 0.8;
+}
+
+.btn-logout {
+    width: 100%;
+    padding: 0.625rem 1rem;
+    background: rgba(239, 68, 68, 0.1);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 6px;
     font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
