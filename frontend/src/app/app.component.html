@@ -1,7 +1,10 @@
 <div class="app-container" *ngIf="authService.isAuthenticated(); else loginView">
   <nav class="sidebar">
     <div class="sidebar-header">
-      <h1>🔐 USER MANAGER</h1>
+      <a class="sidebar-brand">
+        <img src="assets/odec-logo.png" alt="ODEC Logo" class="sidebar-logo">
+        <!-- <h2>{{ title }}</h2> -->
+      </a>
     </div>
 
     <div class="nav-links">

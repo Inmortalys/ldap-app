@@ -37,10 +37,15 @@
     color: white;
 }
 
-.logo {
-    font-size: 3.5rem;
-    margin-bottom: 0.5rem;
+.logo-img {
+    height: 80px;
+    width: auto;
+    margin-bottom: 1rem;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
     animation: bounce 1s ease infinite;
+    background-color: white;
+    border-radius: 100%;
+    padding: 11px
 }
 
 @keyframes bounce {
@@ -51,7 +56,7 @@
     }
 
     50% {
-        transform: translateY(-10px);
+        transform: translateY(-5px);
     }
 }
 
