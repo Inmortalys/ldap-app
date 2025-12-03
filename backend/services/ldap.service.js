@@ -96,8 +96,13 @@ class LdapService {
             this.config = await pocketbaseService.getLdapConfig();
 
             // Determine protocol based on port
-            const protocol = this.config.port === 636 ? 'ldaps' : 'ldap';
-            const ldapUrl = `${protocol}://${this.config.server}:${this.config.port}`;
+            let ldapUrl;
+            if (this.config.server.includes('://')) {
+                ldapUrl = `${this.config.server}:${this.config.port}`;
+            } else {
+                const protocol = this.config.port === 636 ? 'ldaps' : 'ldap';
+                ldapUrl = `${protocol}://${this.config.server}:${this.config.port}`;
+            }
 
             return new Promise((resolve, reject) => {
                 this.client = ldap.createClient({
@@ -157,8 +162,13 @@ class LdapService {
             }
 
             // Determine protocol based on port
-            const protocol = this.config.port === 636 ? 'ldaps' : 'ldap';
-            const ldapUrl = `${protocol}://${this.config.server}:${this.config.port}`;
+            let ldapUrl;
+            if (this.config.server.includes('://')) {
+                ldapUrl = `${this.config.server}:${this.config.port}`;
+            } else {
+                const protocol = this.config.port === 636 ? 'ldaps' : 'ldap';
+                ldapUrl = `${protocol}://${this.config.server}:${this.config.port}`;
+            }
 
             console.log(`Connecting to LDAP: ${ldapUrl}`);
 
@@ -323,8 +333,13 @@ class LdapService {
             }
 
             // Determine protocol based on port
-            const protocol = this.config.port === 636 ? 'ldaps' : 'ldap';
-            const ldapUrl = `${protocol}://${this.config.server}:${this.config.port}`;
+            let ldapUrl;
+            if (this.config.server.includes('://')) {
+                ldapUrl = `${this.config.server}:${this.config.port}`;
+            } else {
+                const protocol = this.config.port === 636 ? 'ldaps' : 'ldap';
+                ldapUrl = `${protocol}://${this.config.server}:${this.config.port}`;
+            }
 
             return new Promise((resolve, reject) => {
                 const userClient = ldap.createClient({
