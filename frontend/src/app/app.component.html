@@ -1,4 +1,4 @@
-<div class="app-container">
+<div class="app-container" *ngIf="authService.isAuthenticated(); else loginView">
   <nav class="sidebar">
     <div class="sidebar-header">
       <h1>🔐 LDAP Manager</h1>
@@ -17,7 +17,17 @@
     </div>
 
     <div class="sidebar-footer">
-      <p>LDAP Management v1.0</p>
+      <div class="user-info" *ngIf="currentUser">
+        <div class="user-avatar">{{ currentUser.cn.charAt(0).toUpperCase() }}</div>
+        <div class="user-details">
+          <div class="user-name">{{ currentUser.cn }}</div>
+          <div class="user-email">{{ currentUser.sAMAccountName }}</div>
+        </div>
+      </div>
+      <button class="btn-logout" (click)="logout()">
+        <span class="icon">🚪</span>
+        Cerrar Sesión
+      </button>
     </div>
   </nav>
 
@@ -25,3 +35,7 @@
     <router-outlet></router-outlet>
   </main>
 </div>
+
+<ng-template #loginView>
+  <router-outlet></router-outlet>
+</ng-template>

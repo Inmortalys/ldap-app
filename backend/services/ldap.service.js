@@ -139,6 +139,184 @@ class LdapService {
     }
 
     /**
+     * Authenticate user with LDAP credentials
+     * @param {string} username - Username (can be sAMAccountName, UPN, or DN)
+     * @param {string} password - User password
+     * @returns {Promise<Object>} User information if authentication successful
+     */
+    async authenticateUser(username, password) {
+        try {
+            // Get config from PocketBase
+            if (!this.config) {
+                this.config = await pocketbaseService.getLdapConfig();
+            }
+
+            const ldapUrl = `${this.config.server}:${this.config.port}`;
+
+            return new Promise((resolve, reject) => {
+                const authClient = ldap.createClient({
+                    url: ldapUrl,
+                    timeout: 5000,
+                    connectTimeout: 10000,
+                });
+
+                authClient.on('error', (err) => {
+                    console.error('LDAP auth connection error:', err);
+                    authClient.unbind();
+                    reject(err);
+                });
+
+                // Construct user DN
+                let userDN = username;
+
+                // If username doesn't contain DC= or @, it's probably sAMAccountName
+                if (!username.includes('DC=') && !username.includes('@')) {
+                    // Try to construct DN from sAMAccountName
+                    // First, try UPN format
+                    const domain = this.extractDomainFromDN(this.config.baseDN);
+                    userDN = `${username}@${domain}`;
+                }
+
+                console.log(`Attempting authentication for: ${userDN}`);
+
+                authClient.bind(userDN, password, async (err) => {
+                    if (err) {
+                        console.error('LDAP authentication failed:', err.message);
+                        authClient.unbind();
+                        reject(new Error('Invalid credentials'));
+                        return;
+                    }
+
+                    console.log(`Successfully authenticated user: ${username}`);
+
+                    // Search for user details
+                    const searchBase = this.config.searchBase || this.config.baseDN;
+                    const searchFilter = username.includes('@') || username.includes('DC=')
+                        ? `(userPrincipalName=${username})`
+                        : `(sAMAccountName=${username})`;
+
+                    const opts = {
+                        filter: searchFilter,
+                        scope: 'sub',
+                        attributes: ['dn', 'cn', 'sAMAccountName', 'mail', 'memberOf'],
+                    };
+
+                    authClient.search(searchBase, opts, (searchErr, searchRes) => {
+                        if (searchErr) {
+                            console.error('Error searching for user:', searchErr);
+                            authClient.unbind();
+                            reject(searchErr);
+                            return;
+                        }
+
+                        let userInfo = null;
+
+                        searchRes.on('searchEntry', (entry) => {
+                            const obj = entry.pojo || entry.object || entry;
+                            const attrs = {};
+
+                            if (obj.attributes) {
+                                obj.attributes.forEach(attr => {
+                                    attrs[attr.type.toLowerCase()] = attr.values.length === 1 ? attr.values[0] : attr.values;
+                                });
+                            }
+
+                            userInfo = {
+                                dn: obj.objectName || attrs.dn,
+                                cn: attrs.cn || '',
+                                sAMAccountName: attrs.samaccountname || username,
+                                mail: attrs.mail || '',
+                                memberOf: attrs.memberof || [],
+                            };
+                        });
+
+                        searchRes.on('error', (searchErr) => {
+                            console.error('Error in user search:', searchErr);
+                            authClient.unbind();
+                            reject(searchErr);
+                        });
+
+                        searchRes.on('end', () => {
+                            authClient.unbind();
+                            if (userInfo) {
+                                resolve(userInfo);
+                            } else {
+                                reject(new Error('User not found'));
+                            }
+                        });
+                    });
+                });
+            });
+        } catch (error) {
+            console.error('Error authenticating user:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Extract domain name from DN
+     * @param {string} dn - Distinguished Name
+     * @returns {string} Domain name (e.g., "example.com")
+     */
+    extractDomainFromDN(dn) {
+        const dcParts = dn.match(/DC=([^,]+)/gi);
+        if (dcParts) {
+            return dcParts.map(dc => dc.replace(/DC=/i, '')).join('.');
+        }
+        return '';
+    }
+
+    /**
+     * Connect to LDAP with specific user credentials
+     * @param {string} username - Username
+     * @param {string} password - Password
+     * @returns {Promise<ldap.Client>} Connected LDAP client
+     */
+    async connectWithCredentials(username, password) {
+        try {
+            if (!this.config) {
+                this.config = await pocketbaseService.getLdapConfig();
+            }
+
+            const ldapUrl = `${this.config.server}:${this.config.port}`;
+
+            return new Promise((resolve, reject) => {
+                const userClient = ldap.createClient({
+                    url: ldapUrl,
+                    timeout: 5000,
+                    connectTimeout: 10000,
+                });
+
+                userClient.on('error', (err) => {
+                    console.error('LDAP user connection error:', err);
+                    reject(err);
+                });
+
+                // Construct user DN
+                let userDN = username;
+                if (!username.includes('DC=') && !username.includes('@')) {
+                    const domain = this.extractDomainFromDN(this.config.baseDN);
+                    userDN = `${username}@${domain}`;
+                }
+
+                userClient.bind(userDN, password, (err) => {
+                    if (err) {
+                        console.error('LDAP user bind error:', err);
+                        userClient.unbind();
+                        reject(err);
+                    } else {
+                        console.log(`Successfully connected with user credentials: ${username}`);
+                        resolve(userClient);
+                    }
+                });
+            });
+        } catch (error) {
+            console.error('Error connecting with user credentials:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Test LDAP connection with provided configuration
      * @param {Object} config - LDAP configuration to test
      * @returns {Promise<boolean>} True if connection successful
@@ -599,6 +777,58 @@ class LdapService {
             });
         } catch (error) {
             console.error('Error changing user password:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Change user password using authenticated admin credentials
+     * @param {string} userDN - Distinguished Name of the user
+     * @param {string} newPassword - New password
+     * @param {string} adminUsername - Admin username
+     * @param {string} adminPassword - Admin password
+     * @returns {Promise<boolean>} True if password change successful
+     */
+    async changeUserPasswordWithAuth(userDN, newPassword, adminUsername, adminPassword) {
+        try {
+            // Get username from DN for validation
+            const username = userDN.split(',')[0].split('=')[1];
+
+            // Validate password complexity
+            const validation = this.validatePasswordComplexity(newPassword, username);
+            if (!validation.valid) {
+                throw new Error(`Validación de contraseña fallida: ${validation.errors.join(', ')}`);
+            }
+
+            // Connect with admin credentials
+            const adminClient = await this.connectWithCredentials(adminUsername, adminPassword);
+
+            return new Promise((resolve, reject) => {
+                // Encode password for Active Directory (UTF-16LE with quotes)
+                const encodedPassword = Buffer.from(`"${newPassword}"`, 'utf16le');
+
+                const change = new ldap.Change({
+                    operation: 'replace',
+                    modification: {
+                        type: 'unicodePwd',
+                        values: [encodedPassword],
+                    },
+                });
+
+                adminClient.modify(userDN, change, (err) => {
+                    adminClient.unbind();
+
+                    if (err) {
+                        console.error('Error changing password:', err);
+                        reject(err);
+                    } else {
+                        console.log(`Successfully changed password for user: ${userDN} by admin: ${adminUsername}`);
+                        resolve(true);
+                    }
+                });
+            });
+        } catch (error) {
+            console.error('Error changing user password with auth:', error);
             throw error;
         }
     }

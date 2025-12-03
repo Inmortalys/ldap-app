@@ -2,6 +2,63 @@ import express from 'express';
 const router = express.Router();
 import ldapService from '../services/ldap.service.js';
 import pocketbaseService from '../services/pocketbase.service.js';
+import { verifyToken, generateToken, decodeCredentials } from '../middleware/auth.middleware.js';
+
+/**
+ * POST /api/ldap/login
+ * Authenticate user with LDAP credentials
+ */
+router.post('/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({
+                success: false,
+                error: 'Username and password are required',
+            });
+        }
+
+        // Authenticate user against LDAP
+        const userInfo = await ldapService.authenticateUser(username, password);
+
+        // Generate JWT token
+        const token = generateToken(userInfo, username, password);
+
+        res.json({
+            success: true,
+            token,
+            user: {
+                dn: userInfo.dn,
+                cn: userInfo.cn,
+                sAMAccountName: userInfo.sAMAccountName,
+                mail: userInfo.mail,
+            },
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(401).json({
+            success: false,
+            error: error.message || 'Authentication failed',
+        });
+    }
+});
+
+/**
+ * GET /api/ldap/verify-token
+ * Verify if token is valid
+ */
+router.get('/verify-token', verifyToken, (req, res) => {
+    res.json({
+        success: true,
+        user: {
+            dn: req.user.dn,
+            cn: req.user.cn,
+            sAMAccountName: req.user.sAMAccountName,
+            mail: req.user.mail,
+        },
+    });
+});
 
 /**
  * GET /api/ldap/users
@@ -106,11 +163,11 @@ router.get('/password-policy', async (req, res) => {
 
 /**
  * POST /api/ldap/change-password
- * Change user password
+ * Change user password (requires authentication)
  */
-router.post('/change-password', async (req, res) => {
+router.post('/change-password', verifyToken, async (req, res) => {
     try {
-        const { userDN, newPassword, userId } = req.body;
+        const { userDN, newPassword } = req.body;
 
         if (!userDN || !newPassword) {
             return res.status(400).json({
@@ -119,14 +176,17 @@ router.post('/change-password', async (req, res) => {
             });
         }
 
-        await ldapService.changeUserPassword(userDN, newPassword);
+        // Decode admin credentials from token
+        const { username, password } = decodeCredentials(req.user.credentials);
+
+        // Change password using authenticated user's credentials
+        await ldapService.changeUserPasswordWithAuth(userDN, newPassword, username, password);
 
         // Log audit event
-        if (userId) {
-            await pocketbaseService.logAudit(userId, 'change_password', userDN, {
-                timestamp: new Date().toISOString(),
-            });
-        }
+        await pocketbaseService.logAudit(req.user.sAMAccountName, 'change_password', userDN, {
+            timestamp: new Date().toISOString(),
+            changedBy: req.user.cn,
+        });
 
         res.json({
             success: true,
