@@ -1,41 +1,40 @@
 <div class="login-container">
     <div class="login-card">
         <div class="login-header">
-            <img src="assets/odec-logo.png" alt="ODEC Logo" class="logo-img">
-            <h1>User Manager</h1>
-            <p>Inicie sesión con sus credenciales de Active Directory</p>
+            <div class="logo-container">
+                <span class="logo-icon">🔐</span>
+            </div>
+            <h1>LDAP Manager</h1>
+            <p>Inicia sesión con tus credenciales de dominio</p>
         </div>
 
         <form (ngSubmit)="onSubmit()" class="login-form">
             <div class="form-group">
                 <label for="username">Usuario</label>
-                <input type="text" id="username" [(ngModel)]="username" name="username" class="form-control"
-                    placeholder="usuario o usuario@dominio.com" [disabled]="loading" required autocomplete="username" />
-                <small class="form-hint">Puede usar sAMAccountName, UPN o DN completo</small>
+                <div class="input-wrapper">
+                    <span class="input-icon">👤</span>
+                    <input type="text" id="username" [(ngModel)]="username" name="username"
+                        placeholder="usuario o usuario@dominio.com" required [disabled]="loading">
+                </div>
             </div>
 
             <div class="form-group">
                 <label for="password">Contraseña</label>
-                <input type="password" id="password" [(ngModel)]="password" name="password" class="form-control"
-                    placeholder="••••••••" [disabled]="loading" required autocomplete="current-password" />
+                <div class="input-wrapper">
+                    <span class="input-icon">🔒</span>
+                    <input type="password" id="password" [(ngModel)]="password" name="password" placeholder="••••••••"
+                        required [disabled]="loading">
+                </div>
             </div>
 
             <div *ngIf="error" class="error-message">
                 ⚠️ {{ error }}
             </div>
 
-            <button type="submit" class="btn-login" [disabled]="loading || !username || !password">
+            <button type="submit" class="btn-login" [disabled]="loading">
                 <span *ngIf="!loading">Iniciar Sesión</span>
-                <span *ngIf="loading">
-                    <span class="spinner"></span>
-                    Autenticando...
-                </span>
+                <span *ngIf="loading">Conectando...</span>
             </button>
         </form>
-
-        <div class="login-footer">
-            <p><strong>Acceso restringido:</strong> Solo usuarios Administradores</p>
-            <!-- <p class="ou-path">OU=Administradores,DC=ODECGANDIA,DC=ES</p> -->
-        </div>
     </div>
 </div>

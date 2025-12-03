@@ -64,9 +64,24 @@ router.get('/verify-token', verifyToken, (req, res) => {
  * GET /api/ldap/users
  * Get all users from LDAP
  */
-router.get('/users', async (req, res) => {
+/**
+ * GET /api/ldap/users
+ * Get all users from LDAP
+ */
+router.get('/users', verifyToken, async (req, res) => {
     try {
-        const users = await ldapService.searchUsers();
+        // Decode credentials from token
+        const { username, password } = decodeCredentials(req.user.credentials);
+
+        // Connect with user credentials
+        const client = await ldapService.connect(username, password);
+
+        // Search users using the authenticated client
+        const users = await ldapService.searchUsers(null, '(objectClass=user)', client);
+
+        // Unbind client after use
+        client.unbind();
+
         res.json({
             success: true,
             count: users.length,
@@ -85,10 +100,24 @@ router.get('/users', async (req, res) => {
  * GET /api/ldap/users/:dn
  * Get specific user by DN
  */
-router.get('/users/:dn', async (req, res) => {
+/**
+ * GET /api/ldap/users/:dn
+ * Get specific user by DN
+ */
+router.get('/users/:dn', verifyToken, async (req, res) => {
     try {
         const dn = decodeURIComponent(req.params.dn);
-        const users = await ldapService.searchUsers(dn, '(objectClass=*)');
+
+        // Decode credentials from token
+        const { username, password } = decodeCredentials(req.user.credentials);
+
+        // Connect with user credentials
+        const client = await ldapService.connect(username, password);
+
+        const users = await ldapService.searchUsers(dn, '(objectClass=*)', client);
+
+        // Unbind client
+        client.unbind();
 
         if (users.length === 0) {
             return res.status(404).json({
@@ -141,9 +170,28 @@ router.post('/users/:dn/unlock', async (req, res) => {
  * GET /api/ldap/password-policy
  * Get domain password policy
  */
-router.get('/password-policy', async (req, res) => {
+/**
+ * GET /api/ldap/password-policy
+ * Get domain password policy
+ */
+router.get('/password-policy', verifyToken, async (req, res) => {
     try {
+        // Decode credentials from token
+        const { username, password } = decodeCredentials(req.user.credentials);
+
+        // Connect with user credentials
+        const client = await ldapService.connect(username, password);
+
+        // Temporarily set client on service for getDomainPasswordPolicyComplete to use
+        // Ideally we should refactor getDomainPasswordPolicyComplete to accept client
+        ldapService.client = client;
+
         const policy = await ldapService.getDomainPasswordPolicyComplete();
+
+        // Unbind client
+        client.unbind();
+        ldapService.client = null;
+
         res.json({
             success: true,
             policy,

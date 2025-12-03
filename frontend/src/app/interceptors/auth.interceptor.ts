@@ -1,40 +1,30 @@
-import { Injectable } from '@angular/core';
-import { HttpInterceptor, HttpRequest, HttpHandler, HttpEvent, HttpErrorResponse } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
-import { Router } from '@angular/router';
+import { HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
 import { AuthService } from '../services/auth.service';
+import { Router } from '@angular/router';
+import { catchError, throwError } from 'rxjs';
 
-@Injectable()
-export class AuthInterceptor implements HttpInterceptor {
-    constructor(
-        private authService: AuthService,
-        private router: Router
-    ) { }
+export const authInterceptor: HttpInterceptorFn = (req, next) => {
+    const authService = inject(AuthService);
+    const router = inject(Router);
+    const token = authService.getToken();
 
-    intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-        // Get token from auth service
-        const token = this.authService.getToken();
-
-        // Clone request and add authorization header if token exists
-        if (token) {
-            req = req.clone({
-                setHeaders: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
-        }
-
-        // Handle response and catch errors
-        return next.handle(req).pipe(
-            catchError((error: HttpErrorResponse) => {
-                if (error.status === 401) {
-                    // Unauthorized - redirect to login
-                    this.authService.logout();
-                    this.router.navigate(['/login']);
-                }
-                return throwError(() => error);
-            })
-        );
+    if (token) {
+        req = req.clone({
+            setHeaders: {
+                Authorization: `Bearer ${token}`
+            }
+        });
     }
-}
+
+    return next(req).pipe(
+        catchError((error) => {
+            if (error.status === 401) {
+                // Token expired or invalid
+                authService.logout();
+                router.navigate(['/login']);
+            }
+            return throwError(() => error);
+        })
+    );
+};

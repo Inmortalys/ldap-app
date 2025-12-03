@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
+import { LdapService } from '../../services/ldap.service';
 
 @Component({
     selector: 'app-login',
@@ -15,41 +15,40 @@ export class LoginComponent {
     username = '';
     password = '';
     loading = false;
-    error: string | null = null;
+    error = '';
 
     constructor(
-        private authService: AuthService,
+        private ldapService: LdapService,
         private router: Router
-    ) {
-        // Redirect if already logged in
-        if (this.authService.isAuthenticated()) {
-            this.router.navigate(['/users']);
-        }
-    }
+    ) { }
 
     onSubmit(): void {
         if (!this.username || !this.password) {
-            this.error = 'Por favor ingrese usuario y contraseña';
+            this.error = 'Por favor, introduce usuario y contraseña';
             return;
         }
 
         this.loading = true;
-        this.error = null;
+        this.error = '';
 
-        this.authService.login(this.username, this.password).subscribe({
+        this.ldapService.login(this.username, this.password).subscribe({
             next: (response) => {
-                if (response.success) {
-                    console.log('Login successful');
+                this.loading = false;
+                if (response.success && response.token) {
+                    // Store token and user info
+                    localStorage.setItem('token', response.token);
+                    localStorage.setItem('user', JSON.stringify(response.user));
+
+                    // Redirect to dashboard/users
                     this.router.navigate(['/users']);
                 } else {
-                    this.error = response.error || 'Error de autenticación';
-                    this.loading = false;
+                    this.error = 'Error en el inicio de sesión';
                 }
             },
             error: (err) => {
-                console.error('Login error:', err);
-                this.error = err.error?.error || 'Error al conectar con el servidor';
                 this.loading = false;
+                console.error('Login error:', err);
+                this.error = err.error?.error || 'Credenciales incorrectas o error de conexión';
             }
         });
     }

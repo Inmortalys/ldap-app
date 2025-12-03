@@ -155,9 +155,9 @@ class LdapService {
      */
     async authenticateUser(username, password) {
         try {
-            // Get config from PocketBase
+            // Get config from config service
             if (!this.config) {
-                this.config = await pocketbaseService.getLdapConfig();
+                this.config = configService.getLdapConfig();
             }
 
             // Determine protocol based on port
@@ -414,12 +414,21 @@ class LdapService {
      * Search for users in LDAP
      * @param {string} searchBase - Base DN to search from (optional, uses config if not provided)
      * @param {string} filter - LDAP filter (default: objectClass=person)
+     * @param {Object} client - Authenticated LDAP client (optional)
      * @returns {Promise<Array>} Array of user objects
      */
-    async searchUsers(searchBase = null, filter = '(objectClass=person)') {
+    async searchUsers(searchBase = null, filter = '(objectClass=person)', client = null) {
         try {
-            if (!this.client) {
-                await this.connect();
+            // Use provided client or existing client (if connected)
+            const searchClient = client || this.client;
+
+            if (!searchClient) {
+                throw new Error('LDAP client not connected');
+            }
+
+            // Get config if not loaded
+            if (!this.config) {
+                this.config = configService.getLdapConfig();
             }
 
             const base = searchBase || this.config.searchBase || this.config.baseDN;
@@ -448,7 +457,7 @@ class LdapService {
                     ],
                 };
 
-                this.client.search(base, opts, (err, res) => {
+                searchClient.search(base, opts, (err, res) => {
                     if (err) {
                         console.error('LDAP search error:', err);
                         reject(err);
