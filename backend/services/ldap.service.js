@@ -320,66 +320,6 @@ class LdapService {
     }
 
     /**
-     * Connect to LDAP with specific user credentials
-     * @param {string} username - Username
-     * @param {string} password - Password
-     * @returns {Promise<ldap.Client>} Connected LDAP client
-     */
-    async connectWithCredentials(username, password) {
-        try {
-            if (!this.config) {
-                this.config = await pocketbaseService.getLdapConfig();
-            }
-
-            // Determine protocol based on port
-            let ldapUrl;
-            if (this.config.server.includes('://')) {
-                ldapUrl = `${this.config.server}:${this.config.port}`;
-            } else {
-                const protocol = this.config.port === 636 ? 'ldaps' : 'ldap';
-                ldapUrl = `${protocol}://${this.config.server}:${this.config.port}`;
-            }
-
-            return new Promise((resolve, reject) => {
-                const userClient = ldap.createClient({
-                    url: ldapUrl,
-                    timeout: 5000,
-                    connectTimeout: 10000,
-                    tlsOptions: {
-                        rejectUnauthorized: false // Allow self-signed certs
-                    }
-                });
-
-                userClient.on('error', (err) => {
-                    console.error('LDAP user connection error:', err);
-                    reject(err);
-                });
-
-                // Construct user DN
-                let userDN = username;
-                if (!username.includes('DC=') && !username.includes('@')) {
-                    const domain = this.extractDomainFromDN(this.config.baseDN);
-                    userDN = `${username}@${domain}`;
-                }
-
-                userClient.bind(userDN, password, (err) => {
-                    if (err) {
-                        console.error('LDAP user bind error:', err);
-                        userClient.unbind();
-                        reject(err);
-                    } else {
-                        console.log(`Successfully connected with user credentials: ${username}`);
-                        resolve(userClient);
-                    }
-                });
-            });
-        } catch (error) {
-            console.error('Error connecting with user credentials:', error);
-            throw error;
-        }
-    }
-
-    /**
      * Test LDAP connection with provided configuration
      * @param {Object} config - LDAP configuration to test
      * @returns {Promise<boolean>} True if connection successful

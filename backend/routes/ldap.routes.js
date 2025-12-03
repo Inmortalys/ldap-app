@@ -149,7 +149,6 @@ router.get('/users/:dn', verifyToken, async (req, res) => {
 router.post('/users/:dn/unlock', async (req, res) => {
     try {
         const dn = decodeURIComponent(req.params.dn);
-        const userId = req.body.userId; // PocketBase user ID for audit logging
 
         await ldapService.unlockUser(dn);
 
