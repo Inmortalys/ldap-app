@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { LdapUser, LdapConfig } from '../models/ldap.model';
+import { LdapUser, LdapConfig, PasswordPolicy, PasswordChangeRequest } from '../models/ldap.model';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -33,6 +33,20 @@ export class LdapService {
     unlockUser(dn: string, userId?: string): Observable<any> {
         const encodedDn = encodeURIComponent(dn);
         return this.http.post<any>(`${this.apiUrl}/ldap/users/${encodedDn}/unlock`, { userId });
+    }
+
+    /**
+     * Get domain password policy
+     */
+    getPasswordPolicy(): Observable<any> {
+        return this.http.get<any>(`${this.apiUrl}/ldap/password-policy`);
+    }
+
+    /**
+     * Change user password
+     */
+    changePassword(request: PasswordChangeRequest): Observable<any> {
+        return this.http.post<any>(`${this.apiUrl}/ldap/change-password`, request);
     }
 
     /**

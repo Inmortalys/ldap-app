@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LdapService } from '../../services/ldap.service';
-import { LdapUser } from '../../models/ldap.model';
+import { LdapUser, PasswordPolicy, PasswordValidation } from '../../models/ldap.model';
 
 @Component({
   selector: 'app-users',
@@ -19,10 +19,31 @@ export class UsersComponent implements OnInit {
   searchTerm = '';
   statusFilter: string = 'all'; // 'all', 'active', 'locked', 'disabled'
 
+  // Password change modal
+  showPasswordModal = false;
+  selectedUser: LdapUser | null = null;
+  newPassword = '';
+  confirmPassword = '';
+  passwordPolicy: PasswordPolicy | null = null;
+  passwordValidation: PasswordValidation = {
+    valid: false,
+    errors: [],
+    requirements: {
+      minLength: false,
+      hasUppercase: false,
+      hasLowercase: false,
+      hasNumber: false,
+      hasSpecial: false,
+      notContainsUsername: false
+    }
+  };
+  changingPassword = false;
+
   constructor(private ldapService: LdapService) { }
 
   ngOnInit(): void {
     this.loadUsers();
+    this.loadPasswordPolicy();
   }
 
   loadUsers(): void {
@@ -44,6 +65,20 @@ export class UsersComponent implements OnInit {
         console.error('Error loading users:', err);
         this.error = err.error?.error || 'Failed to connect to LDAP server';
         this.loading = false;
+      }
+    });
+  }
+
+  loadPasswordPolicy(): void {
+    this.ldapService.getPasswordPolicy().subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.passwordPolicy = response.policy;
+          console.log('Password policy loaded:', this.passwordPolicy);
+        }
+      },
+      error: (err) => {
+        console.error('Error loading password policy:', err);
       }
     });
   }
@@ -105,6 +140,147 @@ export class UsersComponent implements OnInit {
     });
   }
 
+  openChangePasswordModal(user: LdapUser): void {
+    this.selectedUser = user;
+    this.newPassword = '';
+    this.confirmPassword = '';
+    this.showPasswordModal = true;
+    this.validatePassword();
+  }
+
+  closePasswordModal(): void {
+    this.showPasswordModal = false;
+    this.selectedUser = null;
+    this.newPassword = '';
+    this.confirmPassword = '';
+  }
+
+  validatePassword(): void {
+    if (!this.selectedUser) return;
+
+    const password = this.newPassword;
+    const username = this.selectedUser.sAMAccountName;
+
+    this.passwordValidation = {
+      valid: true,
+      errors: [],
+      requirements: {
+        minLength: false,
+        hasUppercase: false,
+        hasLowercase: false,
+        hasNumber: false,
+        hasSpecial: false,
+        notContainsUsername: false
+      }
+    };
+
+    // Check minimum length
+    if (password.length >= 12) {
+      this.passwordValidation.requirements.minLength = true;
+    } else {
+      this.passwordValidation.valid = false;
+      this.passwordValidation.errors.push('Mínimo 12 caracteres');
+    }
+
+    // Check for uppercase
+    if (/[A-Z]/.test(password)) {
+      this.passwordValidation.requirements.hasUppercase = true;
+    } else {
+      this.passwordValidation.valid = false;
+      this.passwordValidation.errors.push('Al menos una mayúscula');
+    }
+
+    // Check for lowercase
+    if (/[a-z]/.test(password)) {
+      this.passwordValidation.requirements.hasLowercase = true;
+    } else {
+      this.passwordValidation.valid = false;
+      this.passwordValidation.errors.push('Al menos una minúscula');
+    }
+
+    // Check for number
+    if (/[0-9]/.test(password)) {
+      this.passwordValidation.requirements.hasNumber = true;
+    } else {
+      this.passwordValidation.valid = false;
+      this.passwordValidation.errors.push('Al menos un número');
+    }
+
+    // Check for special character
+    if (/[^A-Za-z0-9]/.test(password)) {
+      this.passwordValidation.requirements.hasSpecial = true;
+    } else {
+      this.passwordValidation.valid = false;
+      this.passwordValidation.errors.push('Al menos un carácter especial');
+    }
+
+    // Check if password contains username
+    if (username && password.toLowerCase().includes(username.toLowerCase())) {
+      this.passwordValidation.valid = false;
+      this.passwordValidation.errors.push('No puede contener el nombre de usuario');
+    } else {
+      this.passwordValidation.requirements.notContainsUsername = true;
+    }
+  }
+
+  submitPasswordChange(): void {
+    if (!this.selectedUser) return;
+
+    // Validate passwords match
+    if (this.newPassword !== this.confirmPassword) {
+      alert('Las contraseñas no coinciden');
+      return;
+    }
+
+    // Validate password requirements
+    if (!this.passwordValidation.valid) {
+      alert('La contraseña no cumple con los requisitos de seguridad');
+      return;
+    }
+
+    this.changingPassword = true;
+
+    this.ldapService.changePassword({
+      userDN: this.selectedUser.dn,
+      newPassword: this.newPassword
+    }).subscribe({
+      next: (response) => {
+        this.changingPassword = false;
+        if (response.success) {
+          alert(`Contraseña cambiada correctamente para ${this.selectedUser!.cn}`);
+          this.closePasswordModal();
+          this.loadUsers();
+        } else {
+          alert(`Error: ${response.error}`);
+        }
+      },
+      error: (err) => {
+        this.changingPassword = false;
+        console.error('Error changing password:', err);
+        alert(`Error al cambiar contraseña: ${err.error?.error || 'Error desconocido'}`);
+      }
+    });
+  }
+
+  getPasswordStrength(): number {
+    const requirements = this.passwordValidation.requirements;
+    let strength = 0;
+    if (requirements.minLength) strength++;
+    if (requirements.hasUppercase) strength++;
+    if (requirements.hasLowercase) strength++;
+    if (requirements.hasNumber) strength++;
+    if (requirements.hasSpecial) strength++;
+    if (requirements.notContainsUsername) strength++;
+    return (strength / 6) * 100;
+  }
+
+  getPasswordStrengthClass(): string {
+    const strength = this.getPasswordStrength();
+    if (strength < 50) return 'weak';
+    if (strength < 83) return 'medium';
+    return 'strong';
+  }
+
   getExpiryClass(user: LdapUser): string {
     if (!user.daysUntilExpiry) return '';
 
@@ -128,18 +304,6 @@ export class UsersComponent implements OnInit {
     if (!date) return 'N/A';
     return new Date(date).toLocaleDateString('es-ES');
   }
-
-  // getUserIdentifier(user: LdapUser): string {
-  //   // Try to get samaccountname from uid, or fallback to cn
-  //   if (user.uid && user.uid.trim()) {
-  //     return user.uid;
-  //   }
-  //   // For AD users, extract the first part of CN (usually the username)
-  //   if (user.cn) {
-  //     return user.cn.split(' ')[0];
-  //   }
-  //   return 'N/A';
-  // }
 
   formatExpiryDate(user: LdapUser): string {
     if (!user.pwdExpiryDate) return 'Nunca';

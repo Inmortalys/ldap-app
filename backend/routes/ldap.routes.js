@@ -85,6 +85,63 @@ router.post('/users/:dn/unlock', async (req, res) => {
 });
 
 /**
+ * GET /api/ldap/password-policy
+ * Get domain password policy
+ */
+router.get('/password-policy', async (req, res) => {
+    try {
+        const policy = await ldapService.getDomainPasswordPolicyComplete();
+        res.json({
+            success: true,
+            policy,
+        });
+    } catch (error) {
+        console.error('Error fetching password policy:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to fetch password policy',
+        });
+    }
+});
+
+/**
+ * POST /api/ldap/change-password
+ * Change user password
+ */
+router.post('/change-password', async (req, res) => {
+    try {
+        const { userDN, newPassword, userId } = req.body;
+
+        if (!userDN || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: userDN and newPassword',
+            });
+        }
+
+        await ldapService.changeUserPassword(userDN, newPassword);
+
+        // Log audit event
+        if (userId) {
+            await pocketbaseService.logAudit(userId, 'change_password', userDN, {
+                timestamp: new Date().toISOString(),
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Password changed successfully',
+        });
+    } catch (error) {
+        console.error('Error changing password:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to change password',
+        });
+    }
+});
+
+/**
  * POST /api/ldap/test-connection
  * Test LDAP connection with provided configuration
  */

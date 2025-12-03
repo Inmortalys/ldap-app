@@ -76,11 +76,13 @@
             </span>
           </td>
           <td>{{ formatExpiryDate(user) }}</td>
-          <td>
+          <td class="actions-cell">
             <button *ngIf="user.isLocked" class="btn-unlock" (click)="unlockUser(user)" title="Desbloquear usuario">
               🔓 Desbloquear
             </button>
-            <span *ngIf="!user.isLocked" class="no-action">—</span>
+            <button class="btn-change-password" (click)="openChangePasswordModal(user)" title="Cambiar contraseña">
+              🔑 Cambiar Contraseña
+            </button>
           </td>
         </tr>
       </tbody>
@@ -89,5 +91,88 @@
 
   <div *ngIf="!loading && !error && filteredUsers.length > 0" class="footer-info">
     <p>Mostrando {{ filteredUsers.length }} de {{ users.length }} usuarios</p>
+  </div>
+</div>
+
+<!-- Password Change Modal -->
+<div *ngIf="showPasswordModal" class="modal-overlay" (click)="closePasswordModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>🔑 Cambiar Contraseña</h2>
+      <button class="btn-close" (click)="closePasswordModal()">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="user-info">
+        <p><strong>Usuario:</strong> {{ selectedUser?.sAMAccountName }}</p>
+        <p><strong>Nombre:</strong> {{ selectedUser?.cn }}</p>
+      </div>
+
+      <div class="form-group">
+        <label for="newPassword">Nueva Contraseña</label>
+        <input type="password" id="newPassword" [(ngModel)]="newPassword" (input)="validatePassword()"
+          class="form-control" placeholder="Ingrese la nueva contraseña" />
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Confirmar Contraseña</label>
+        <input type="password" id="confirmPassword" [(ngModel)]="confirmPassword" class="form-control"
+          placeholder="Confirme la nueva contraseña" />
+      </div>
+
+      <!-- Password Strength Meter -->
+      <div class="password-strength" *ngIf="newPassword">
+        <div class="strength-label">Fortaleza de la contraseña:</div>
+        <div class="strength-bar">
+          <div class="strength-fill" [class]="getPasswordStrengthClass()" [style.width.%]="getPasswordStrength()"></div>
+        </div>
+      </div>
+
+      <!-- Password Requirements -->
+      <div class="password-requirements">
+        <h3>Requisitos de Contraseña:</h3>
+        <ul>
+          <li [class.valid]="passwordValidation.requirements.minLength">
+            <span class="icon">{{ passwordValidation.requirements.minLength ? '✓' : '✗' }}</span>
+            Mínimo 12 caracteres
+          </li>
+          <li [class.valid]="passwordValidation.requirements.hasUppercase">
+            <span class="icon">{{ passwordValidation.requirements.hasUppercase ? '✓' : '✗' }}</span>
+            Al menos una letra mayúscula
+          </li>
+          <li [class.valid]="passwordValidation.requirements.hasLowercase">
+            <span class="icon">{{ passwordValidation.requirements.hasLowercase ? '✓' : '✗' }}</span>
+            Al menos una letra minúscula
+          </li>
+          <li [class.valid]="passwordValidation.requirements.hasNumber">
+            <span class="icon">{{ passwordValidation.requirements.hasNumber ? '✓' : '✗' }}</span>
+            Al menos un número
+          </li>
+          <li [class.valid]="passwordValidation.requirements.hasSpecial">
+            <span class="icon">{{ passwordValidation.requirements.hasSpecial ? '✓' : '✗' }}</span>
+            Al menos un carácter especial
+          </li>
+          <li [class.valid]="passwordValidation.requirements.notContainsUsername">
+            <span class="icon">{{ passwordValidation.requirements.notContainsUsername ? '✓' : '✗' }}</span>
+            No contiene el nombre de usuario
+          </li>
+        </ul>
+      </div>
+
+      <div *ngIf="newPassword && confirmPassword && newPassword !== confirmPassword" class="password-mismatch">
+        ⚠️ Las contraseñas no coinciden
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="closePasswordModal()" [disabled]="changingPassword">
+        Cancelar
+      </button>
+      <button class="btn-submit" (click)="submitPasswordChange()"
+        [disabled]="!passwordValidation.valid || newPassword !== confirmPassword || changingPassword">
+        <span *ngIf="!changingPassword">Cambiar Contraseña</span>
+        <span *ngIf="changingPassword">⏳ Cambiando...</span>
+      </button>
+    </div>
   </div>
 </div>

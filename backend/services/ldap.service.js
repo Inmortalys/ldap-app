@@ -364,6 +364,246 @@ class LdapService {
     }
 
     /**
+     * Get complete domain password policy
+     * @returns {Promise<Object>} Password policy object
+     */
+    async getDomainPasswordPolicyComplete() {
+        try {
+            if (!this.client) {
+                await this.connect();
+            }
+
+            const domainDN = this.config.baseDN || this.extractDomainDN(this.config.adminDN);
+
+            return new Promise((resolve, reject) => {
+                const opts = {
+                    filter: '(objectClass=domain)',
+                    scope: 'base',
+                    attributes: [
+                        'maxPwdAge',
+                        'minPwdAge',
+                        'minPwdLength',
+                        'pwdHistoryLength',
+                        'pwdProperties',
+                        'lockoutDuration',
+                        'lockoutThreshold',
+                        'lockOutObservationWindow'
+                    ],
+                };
+
+                this.client.search(domainDN, opts, (err, res) => {
+                    if (err) {
+                        console.error('Error querying domain password policy:', err);
+                        reject(err);
+                        return;
+                    }
+
+                    let policy = {
+                        minLength: 12,
+                        complexityEnabled: true,
+                        historyCount: 24,
+                        minAge: 2,
+                        maxAge: 183,
+                        lockoutThreshold: 8,
+                        lockoutDuration: 60,
+                        lockoutObservationWindow: 30
+                    };
+
+                    res.on('searchEntry', (entry) => {
+                        const obj = entry.pojo || entry.object || entry;
+                        if (obj.attributes) {
+                            obj.attributes.forEach(attr => {
+                                const attrName = attr.type.toLowerCase();
+                                if (attr.values.length > 0) {
+                                    switch (attrName) {
+                                        case 'minpwdlength':
+                                            policy.minLength = parseInt(attr.values[0]);
+                                            break;
+                                        case 'pwdhistorylength':
+                                            policy.historyCount = parseInt(attr.values[0]);
+                                            break;
+                                        case 'pwdproperties':
+                                            // Bit 0 = complexity enabled
+                                            policy.complexityEnabled = !!(parseInt(attr.values[0]) & 0x01);
+                                            break;
+                                        case 'minpwdage':
+                                            const minNano = Math.abs(parseInt(attr.values[0]));
+                                            policy.minAge = Math.floor(minNano / 10000 / 1000 / 60 / 60 / 24);
+                                            break;
+                                        case 'maxpwdage':
+                                            const maxNano = Math.abs(parseInt(attr.values[0]));
+                                            policy.maxAge = Math.floor(maxNano / 10000 / 1000 / 60 / 60 / 24);
+                                            break;
+                                        case 'lockoutthreshold':
+                                            policy.lockoutThreshold = parseInt(attr.values[0]);
+                                            break;
+                                        case 'lockoutduration':
+                                            const lockNano = Math.abs(parseInt(attr.values[0]));
+                                            policy.lockoutDuration = Math.floor(lockNano / 10000 / 1000 / 60);
+                                            break;
+                                        case 'lockoutobservationwindow':
+                                            const obsNano = Math.abs(parseInt(attr.values[0]));
+                                            policy.lockoutObservationWindow = Math.floor(obsNano / 10000 / 1000 / 60);
+                                            break;
+                                    }
+                                }
+                            });
+                        }
+                    });
+
+                    res.on('error', (err) => {
+                        console.error('Error in domain policy search:', err);
+                        reject(err);
+                    });
+
+                    res.on('end', (result) => {
+                        if (result.status !== 0) {
+                            reject(new Error(`Domain policy query failed with status: ${result.status}`));
+                        } else {
+                            console.log('Domain password policy:', policy);
+                            resolve(policy);
+                        }
+                    });
+                });
+            });
+        } catch (error) {
+            console.error('Error getting domain password policy:', error);
+            // Return default values
+            return {
+                minLength: 12,
+                complexityEnabled: true,
+                historyCount: 24,
+                minAge: 2,
+                maxAge: 183,
+                lockoutThreshold: 8,
+                lockoutDuration: 60,
+                lockoutObservationWindow: 30
+            };
+        }
+    }
+
+    /**
+     * Validate password complexity
+     * @param {string} password - Password to validate
+     * @param {string} username - Username to check against
+     * @returns {Object} Validation result with details
+     */
+    validatePasswordComplexity(password, username) {
+        const result = {
+            valid: true,
+            errors: [],
+            requirements: {
+                minLength: false,
+                hasUppercase: false,
+                hasLowercase: false,
+                hasNumber: false,
+                hasSpecial: false,
+                notContainsUsername: false
+            }
+        };
+
+        // Check minimum length (12 characters)
+        if (password.length >= 12) {
+            result.requirements.minLength = true;
+        } else {
+            result.valid = false;
+            result.errors.push('La contraseña debe tener al menos 12 caracteres');
+        }
+
+        // Check for uppercase
+        if (/[A-Z]/.test(password)) {
+            result.requirements.hasUppercase = true;
+        } else {
+            result.valid = false;
+            result.errors.push('Debe contener al menos una letra mayúscula');
+        }
+
+        // Check for lowercase
+        if (/[a-z]/.test(password)) {
+            result.requirements.hasLowercase = true;
+        } else {
+            result.valid = false;
+            result.errors.push('Debe contener al menos una letra minúscula');
+        }
+
+        // Check for number
+        if (/[0-9]/.test(password)) {
+            result.requirements.hasNumber = true;
+        } else {
+            result.valid = false;
+            result.errors.push('Debe contener al menos un número');
+        }
+
+        // Check for special character
+        if (/[^A-Za-z0-9]/.test(password)) {
+            result.requirements.hasSpecial = true;
+        } else {
+            result.valid = false;
+            result.errors.push('Debe contener al menos un carácter especial');
+        }
+
+        // Check if password contains username
+        if (username && password.toLowerCase().includes(username.toLowerCase())) {
+            result.valid = false;
+            result.errors.push('La contraseña no puede contener el nombre de usuario');
+        } else {
+            result.requirements.notContainsUsername = true;
+        }
+
+        return result;
+    }
+
+    /**
+     * Change user password in Active Directory
+     * @param {string} userDN - Distinguished Name of the user
+     * @param {string} newPassword - New password
+     * @param {boolean} adminChange - Whether this is an admin-initiated change
+     * @returns {Promise<boolean>} True if password change successful
+     */
+    async changeUserPassword(userDN, newPassword, adminChange = true) {
+        try {
+            if (!this.client) {
+                await this.connect();
+            }
+
+            // Get username from DN for validation
+            const username = userDN.split(',')[0].split('=')[1];
+
+            // Validate password complexity
+            const validation = this.validatePasswordComplexity(newPassword, username);
+            if (!validation.valid) {
+                throw new Error(`Validación de contraseña fallida: ${validation.errors.join(', ')}`);
+            }
+
+            return new Promise((resolve, reject) => {
+                // Encode password for Active Directory (UTF-16LE with quotes)
+                const encodedPassword = Buffer.from(`"${newPassword}"`, 'utf16le');
+
+                const change = new ldap.Change({
+                    operation: 'replace',
+                    modification: {
+                        type: 'unicodePwd',
+                        values: [encodedPassword],
+                    },
+                });
+
+                this.client.modify(userDN, change, (err) => {
+                    if (err) {
+                        console.error('Error changing password:', err);
+                        reject(err);
+                    } else {
+                        console.log(`Successfully changed password for user: ${userDN}`);
+                        resolve(true);
+                    }
+                });
+            });
+        } catch (error) {
+            console.error('Error changing user password:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Unlock a locked user account
      * @param {string} userDN - Distinguished Name of the user
      * @returns {Promise<boolean>} True if unlock successful
