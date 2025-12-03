@@ -21,17 +21,21 @@ export class SettingsComponent implements OnInit {
     searchBase: ''
   };
 
+  // Local storage key for custom search bases
+  private readonly SEARCH_BASES_KEY = 'ldap_custom_search_bases';
+
+  customSearchBases: string[] = [];
+  newSearchBase = '';
+
   loading = false;
-  testing = false;
-  saving = false;
   error: string | null = null;
   success: string | null = null;
-  testResult: string | null = null;
 
   constructor(private ldapService: LdapService) { }
 
   ngOnInit(): void {
     this.loadConfig();
+    this.loadCustomSearchBases();
   }
 
   loadConfig(): void {
@@ -43,100 +47,62 @@ export class SettingsComponent implements OnInit {
         if (response.success && response.config) {
           this.config = {
             ...this.config,
-            ...response.config,
-            adminPassword: '' // Don't load password for security
+            ...response.config
           };
+
+          // Add default search base to custom list if not present
+          if (this.config.searchBase && !this.customSearchBases.includes(this.config.searchBase)) {
+            this.customSearchBases.unshift(this.config.searchBase);
+            this.saveCustomSearchBases();
+          }
         }
         this.loading = false;
       },
       error: (err) => {
         console.error('Error loading config:', err);
-        // If no config exists yet, that's okay
-        if (err.status !== 404) {
-          this.error = 'Error al cargar la configuración';
-        }
+        this.error = 'Error al cargar la configuración del servidor';
         this.loading = false;
       }
     });
   }
 
-  testConnection(): void {
-    this.testing = true;
-    this.testResult = null;
-    this.error = null;
-
-    if (!this.validateForm()) {
-      this.testing = false;
-      return;
-    }
-
-    this.ldapService.testConnection(this.config).subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.testResult = '✅ Conexión exitosa al servidor LDAP';
-        } else {
-          this.testResult = `❌ ${response.error}`;
-        }
-        this.testing = false;
-      },
-      error: (err) => {
-        console.error('Connection test failed:', err);
-        this.testResult = `❌ Error: ${err.error?.error || 'No se pudo conectar al servidor LDAP'}`;
-        this.testing = false;
+  loadCustomSearchBases(): void {
+    const saved = localStorage.getItem(this.SEARCH_BASES_KEY);
+    if (saved) {
+      try {
+        this.customSearchBases = JSON.parse(saved);
+      } catch (e) {
+        this.customSearchBases = [];
       }
-    });
+    }
   }
 
-  saveConfig(): void {
-    if (!this.validateForm()) {
-      return;
-    }
-
-    if (!this.config.adminPassword) {
-      this.error = 'Debes introducir la contraseña del administrador LDAP';
-      return;
-    }
-
-    this.saving = true;
-    this.error = null;
-    this.success = null;
-
-    this.ldapService.saveConfig(this.config).subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.success = '✅ Configuración guardada correctamente';
-          // Clear password field after saving
-          this.config.adminPassword = '';
-        } else {
-          this.error = response.error || 'Error al guardar la configuración';
-        }
-        this.saving = false;
-      },
-      error: (err) => {
-        console.error('Error saving config:', err);
-        this.error = `Error: ${err.error?.error || 'No se pudo guardar la configuración'}`;
-        this.saving = false;
-      }
-    });
+  saveCustomSearchBases(): void {
+    localStorage.setItem(this.SEARCH_BASES_KEY, JSON.stringify(this.customSearchBases));
   }
 
-  validateForm(): boolean {
-    if (!this.config.server || !this.config.port || !this.config.baseDN || !this.config.adminDN) {
-      this.error = 'Por favor, completa todos los campos obligatorios';
-      return false;
+  addSearchBase(): void {
+    if (!this.newSearchBase) return;
+
+    if (this.customSearchBases.includes(this.newSearchBase)) {
+      this.error = 'Esta ruta de búsqueda ya existe';
+      return;
     }
 
-    if (this.config.port < 1 || this.config.port > 65535) {
-      this.error = 'El puerto debe estar entre 1 y 65535';
-      return false;
-    }
+    this.customSearchBases.push(this.newSearchBase);
+    this.saveCustomSearchBases();
+    this.newSearchBase = '';
+    this.success = 'Ruta de búsqueda añadida correctamente';
+    setTimeout(() => this.success = null, 3000);
+  }
 
-    return true;
+  removeSearchBase(base: string): void {
+    this.customSearchBases = this.customSearchBases.filter(b => b !== base);
+    this.saveCustomSearchBases();
   }
 
   clearMessages(): void {
     this.error = null;
     this.success = null;
-    this.testResult = null;
   }
 }

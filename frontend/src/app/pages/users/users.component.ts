@@ -19,6 +19,11 @@ export class UsersComponent implements OnInit {
   searchTerm = '';
   statusFilter: string = 'all'; // 'all', 'active', 'locked', 'disabled'
 
+  // Search Base selection
+  searchBases: string[] = [];
+  selectedSearchBase: string = '';
+  private readonly SEARCH_BASES_KEY = 'ldap_custom_search_bases';
+
   // Password change modal
   showPasswordModal = false;
   selectedUser: LdapUser | null = null;
@@ -42,19 +47,55 @@ export class UsersComponent implements OnInit {
   constructor(private ldapService: LdapService) { }
 
   ngOnInit(): void {
+    this.loadSearchBases();
     this.loadUsers();
     this.loadPasswordPolicy();
+  }
+
+  loadSearchBases(): void {
+    // Load custom bases from local storage
+    const saved = localStorage.getItem(this.SEARCH_BASES_KEY);
+    if (saved) {
+      try {
+        this.searchBases = JSON.parse(saved);
+      } catch (e) {
+        this.searchBases = [];
+      }
+    }
+
+    // Load default config to get the default search base
+    this.ldapService.getConfig().subscribe({
+      next: (response) => {
+        if (response.success && response.config && response.config.searchBase) {
+          const defaultBase = response.config.searchBase;
+
+          // Add default base if not in list
+          if (!this.searchBases.includes(defaultBase)) {
+            this.searchBases.unshift(defaultBase);
+          }
+
+          // Set selected base to default if not set
+          if (!this.selectedSearchBase) {
+            this.selectedSearchBase = defaultBase;
+          }
+        }
+      }
+    });
   }
 
   loadUsers(): void {
     this.loading = true;
     this.error = null;
 
-    this.ldapService.getUsers().subscribe({
+    // Pass selected search base if it's not empty
+    const searchBase = this.selectedSearchBase || undefined;
+
+    this.ldapService.getUsers(searchBase).subscribe({
       next: (response) => {
         if (response.success) {
           this.users = response.users;
           this.filteredUsers = this.users;
+          this.filterUsers(); // Re-apply filters
           console.log(`Loaded ${this.users.length} users from LDAP`);
         } else {
           this.error = response.error || 'Failed to load users';
@@ -67,6 +108,10 @@ export class UsersComponent implements OnInit {
         this.loading = false;
       }
     });
+  }
+
+  onSearchBaseChange(): void {
+    this.loadUsers();
   }
 
   loadPasswordPolicy(): void {

@@ -17,84 +17,57 @@
             {{ success }}
         </div>
 
-        <div *ngIf="testResult" class="message test-result">
-            {{ testResult }}
-        </div>
-
         <div class="form-section">
-            <h2>Servidor LDAP</h2>
+            <h2>Servidor LDAP (Solo Lectura)</h2>
+            <p class="section-desc">Esta configuración se carga desde el archivo .env del servidor.</p>
 
             <div class="form-group">
-                <label for="server">Servidor *</label>
-                <input id="server" type="text" [(ngModel)]="config.server" (input)="clearMessages()"
-                    placeholder="ldap://servidor.ejemplo.com" class="form-input" />
-                <small>Ejemplo: ldap://192.168.1.100 o ldaps://ldap.ejemplo.com</small>
+                <label for="server">Servidor</label>
+                <input id="server" type="text" [value]="config.server" readonly class="form-input readonly" />
             </div>
 
             <div class="form-group">
-                <label for="port">Puerto *</label>
-                <input id="port" type="number" [(ngModel)]="config.port" (input)="clearMessages()" placeholder="389"
-                    class="form-input" />
-                <small>Puerto estándar: 389 (LDAP) o 636 (LDAPS)</small>
+                <label for="port">Puerto</label>
+                <input id="port" type="number" [value]="config.port" readonly class="form-input readonly" />
+            </div>
+
+            <div class="form-group">
+                <label for="baseDN">Base DN</label>
+                <input id="baseDN" type="text" [value]="config.baseDN" readonly class="form-input readonly" />
             </div>
         </div>
 
         <div class="form-section">
-            <h2>Configuración de Búsqueda</h2>
+            <h2>Rutas de Búsqueda (Search Bases)</h2>
+            <p class="section-desc">Gestiona las rutas donde buscar usuarios. Estas se guardan en tu navegador.</p>
 
-            <div class="form-group">
-                <label for="baseDN">Base DN *</label>
-                <input id="baseDN" type="text" [(ngModel)]="config.baseDN" (input)="clearMessages()"
-                    placeholder="dc=ejemplo,dc=com" class="form-input" />
-                <small>Distinguished Name base del directorio</small>
+            <div class="add-search-base">
+                <div class="form-group">
+                    <label for="newSearchBase">Nueva Ruta de Búsqueda</label>
+                    <div class="input-group">
+                        <input id="newSearchBase" type="text" [(ngModel)]="newSearchBase" (input)="clearMessages()"
+                            placeholder="OU=Usuarios,DC=ejemplo,DC=com" class="form-input" />
+                        <button class="btn btn-add" (click)="addSearchBase()" [disabled]="!newSearchBase">
+                            ➕ Añadir
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="searchBase">Search Base (Opcional)</label>
-                <input id="searchBase" type="text" [(ngModel)]="config.searchBase" (input)="clearMessages()"
-                    placeholder="ou=users,dc=ejemplo,dc=com" class="form-input" />
-                <small>Ruta específica para buscar usuarios. Si está vacío, se usa Base DN</small>
-            </div>
-        </div>
-
-        <div class="form-section">
-            <h2>Credenciales de Administrador</h2>
-
-            <div class="form-group">
-                <label for="adminDN">Admin DN *</label>
-                <input id="adminDN" type="text" [(ngModel)]="config.adminDN" (input)="clearMessages()"
-                    placeholder="cn=admin,dc=ejemplo,dc=com" class="form-input" />
-                <small>Distinguished Name del usuario administrador</small>
-            </div>
-
-            <div class="form-group">
-                <label for="adminPassword">Contraseña de Administrador *</label>
-                <input id="adminPassword" type="password" [(ngModel)]="config.adminPassword" (input)="clearMessages()"
-                    placeholder="••••••••" class="form-input" />
-                <small>⚠️ La contraseña se almacena cifrada en PocketBase</small>
+            <div class="search-bases-list">
+                <h3>Rutas Guardadas</h3>
+                <div *ngIf="customSearchBases.length === 0" class="empty-state">
+                    No hay rutas guardadas.
+                </div>
+                <ul class="base-list">
+                    <li *ngFor="let base of customSearchBases" class="base-item">
+                        <span class="base-text">{{ base }}</span>
+                        <button class="btn-icon delete" (click)="removeSearchBase(base)" title="Eliminar">
+                            🗑️
+                        </button>
+                    </li>
+                </ul>
             </div>
         </div>
-
-        <div class="form-actions">
-            <button class="btn btn-test" (click)="testConnection()" [disabled]="testing || saving">
-                <span *ngIf="!testing">🔍 Probar Conexión</span>
-                <span *ngIf="testing">⏳ Probando...</span>
-            </button>
-
-            <button class="btn btn-save" (click)="saveConfig()" [disabled]="testing || saving">
-                <span *ngIf="!saving">💾 Guardar Configuración</span>
-                <span *ngIf="saving">⏳ Guardando...</span>
-            </button>
-        </div>
-    </div>
-
-    <div class="info-section">
-        <h3>ℹ️ Información</h3>
-        <ul>
-            <li>Esta configuración se almacena de forma segura en PocketBase</li>
-            <li>La contraseña del administrador se cifra antes de guardarla</li>
-            <li>Los datos de PocketBase NO se suben al repositorio Git</li>
-            <li>Prueba la conexión antes de guardar para verificar que los datos son correctos</li>
-        </ul>
     </div>
 </div>

@@ -1,10 +1,19 @@
 <div class="users-container">
   <div class="header">
     <h1>👥 Usuarios LDAP</h1>
-    <button class="btn-refresh" (click)="loadUsers()" [disabled]="loading">
-      <span *ngIf="!loading">🔄 Actualizar</span>
-      <span *ngIf="loading">⏳ Cargando...</span>
-    </button>
+
+    <div class="header-actions">
+      <div class="search-base-selector" *ngIf="searchBases.length > 0">
+        <select id="searchBase" [(ngModel)]="selectedSearchBase" (change)="onSearchBaseChange()" class="base-select">
+          <option *ngFor="let base of searchBases" [value]="base">{{ base }}</option>
+        </select>
+      </div>
+
+      <button class="btn-refresh" (click)="loadUsers()" [disabled]="loading">
+        <span *ngIf="!loading">🔄 Actualizar</span>
+        <span *ngIf="loading">⏳ Cargando...</span>
+      </button>
+    </div>
   </div>
 
   <div class="search-bar">

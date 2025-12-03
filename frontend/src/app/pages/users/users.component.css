@@ -8,6 +8,8 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .header h1 {
@@ -16,6 +18,43 @@
   color: #1e293b;
   margin: 0;
   letter-spacing: -0.025em;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.search-base-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.search-base-selector label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.base-select {
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background-color: white;
+  color: #334155;
+  cursor: pointer;
+  min-width: 250px;
+  max-width: 400px;
+  text-overflow: ellipsis;
+}
+
+.base-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .btn-refresh {

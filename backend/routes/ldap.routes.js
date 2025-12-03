@@ -76,8 +76,11 @@ router.get('/users', verifyToken, async (req, res) => {
         // Connect with user credentials
         const client = await ldapService.connect(username, password);
 
+        // Get search base from query param
+        const searchBase = req.query.base ? decodeURIComponent(req.query.base) : null;
+
         // Search users using the authenticated client
-        const users = await ldapService.searchUsers(null, '(objectClass=user)', client);
+        const users = await ldapService.searchUsers(searchBase, '(objectClass=user)', client);
 
         // Unbind client after use
         client.unbind();

@@ -13,10 +13,15 @@ export class LdapService {
     constructor(private http: HttpClient) { }
 
     /**
-     * Get all users from LDAP
+     * Get users from LDAP
+     * @param searchBase Optional search base to override default
      */
-    getUsers(): Observable<any> {
-        return this.http.get<any>(`${this.apiUrl}/ldap/users`);
+    getUsers(searchBase?: string): Observable<any> {
+        let url = `${this.apiUrl}/ldap/users`;
+        if (searchBase) {
+            url += `?base=${encodeURIComponent(searchBase)}`;
+        }
+        return this.http.get<any>(url);
     }
 
     /**
