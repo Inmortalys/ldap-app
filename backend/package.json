@@ -9,8 +9,7 @@
   },
   "keywords": [
     "ldap",
-    "express",
-    "pocketbase"
+    "express"
   ],
   "author": "",
   "license": "MIT",
@@ -20,8 +19,7 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
-    "ldapjs": "^3.0.7",
-    "pocketbase": "^0.21.0"
+    "ldapjs": "^3.0.7"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

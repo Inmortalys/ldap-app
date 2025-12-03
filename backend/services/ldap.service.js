@@ -1,5 +1,5 @@
 import ldap from 'ldapjs';
-import pocketbaseService from './pocketbase.service.js';
+import configService from './config.service.js';
 
 class LdapService {
     constructor() {
@@ -87,13 +87,15 @@ class LdapService {
     }
 
     /**
-     * Connect to LDAP server using configuration from PocketBase
+     * Connect to LDAP server with user credentials
+     * @param {string} username - Username for LDAP bind
+     * @param {string} password - Password for LDAP bind
      * @returns {Promise<ldap.Client>} Connected LDAP client
      */
-    async connect() {
+    async connect(username, password) {
         try {
-            // Get config from PocketBase
-            this.config = await pocketbaseService.getLdapConfig();
+            // Get config from config service
+            this.config = configService.getLdapConfig();
 
             // Determine protocol based on port
             let ldapUrl;
@@ -105,7 +107,7 @@ class LdapService {
             }
 
             return new Promise((resolve, reject) => {
-                this.client = ldap.createClient({
+                const client = ldap.createClient({
                     url: ldapUrl,
                     timeout: 5000,
                     connectTimeout: 10000,
@@ -114,31 +116,28 @@ class LdapService {
                     }
                 });
 
-                this.client.on('error', (err) => {
+                client.on('error', (err) => {
                     console.error('LDAP connection error:', err);
                     reject(err);
                 });
 
-                // Bind with admin credentials
-                this.client.bind(this.config.adminDN, this.config.adminPassword, async (err) => {
+                // Construct user DN for bind
+                let userDN = username;
+                if (!username.includes('DC=') && !username.includes('@')) {
+                    // If username doesn't contain DC= or @, try UPN format
+                    const domain = this.extractDomainFromDN(this.config.baseDN);
+                    userDN = `${username}@${domain}`;
+                }
+
+                // Bind with user credentials
+                client.bind(userDN, password, (err) => {
                     if (err) {
                         console.error('LDAP bind error:', err);
+                        client.unbind();
                         reject(err);
                     } else {
-                        console.log('Successfully connected to LDAP server');
-
-                        // Query domain password policy if not already cached
-                        if (!this.config.maxPwdAge) {
-                            try {
-                                this.config.maxPwdAge = await this.getDomainPasswordPolicy();
-                                console.log(`Cached maxPwdAge: ${this.config.maxPwdAge} days`);
-                            } catch (error) {
-                                console.warn('Failed to query domain password policy, using default 183 days');
-                                this.config.maxPwdAge = 183;
-                            }
-                        }
-
-                        resolve(this.client);
+                        console.log(`Successfully connected to LDAP server as ${username}`);
+                        resolve(client);
                     }
                 });
             });

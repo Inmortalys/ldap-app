@@ -1,7 +1,7 @@
 import express from 'express';
 const router = express.Router();
 import ldapService from '../services/ldap.service.js';
-import pocketbaseService from '../services/pocketbase.service.js';
+import configService from '../services/config.service.js';
 import { verifyToken, generateToken, decodeCredentials } from '../middleware/auth.middleware.js';
 
 /**
@@ -121,12 +121,8 @@ router.post('/users/:dn/unlock', async (req, res) => {
 
         await ldapService.unlockUser(dn);
 
-        // Log audit event
-        if (userId) {
-            await pocketbaseService.logAudit(userId, 'unlock_user', dn, {
-                timestamp: new Date().toISOString(),
-            });
-        }
+        // Simple logging to console
+        console.log(`User ${dn} unlocked by admin`);
 
         res.json({
             success: true,
@@ -182,11 +178,8 @@ router.post('/change-password', verifyToken, async (req, res) => {
         // Change password using authenticated user's credentials
         await ldapService.changeUserPasswordWithAuth(userDN, newPassword, username, password);
 
-        // Log audit event
-        await pocketbaseService.logAudit(req.user.sAMAccountName, 'change_password', userDN, {
-            timestamp: new Date().toISOString(),
-            changedBy: req.user.cn,
-        });
+        // Simple logging to console
+        console.log(`Password changed for ${userDN} by ${req.user.cn}`);
 
         res.json({
             success: true,
@@ -238,14 +231,13 @@ router.post('/test-connection', async (req, res) => {
  */
 router.get('/config', async (req, res) => {
     try {
-        const config = await pocketbaseService.getLdapConfig();
+        const config = configService.getLdapConfig();
 
-        // Remove sensitive data before sending
+        // Remove sensitive data before sending (no password in config service)
         const safeConfig = {
             server: config.server,
             port: config.port,
             baseDN: config.baseDN,
-            adminDN: config.adminDN,
             searchBase: config.searchBase,
         };
 
@@ -264,43 +256,13 @@ router.get('/config', async (req, res) => {
 
 /**
  * POST /api/ldap/config
- * Save LDAP configuration
+ * Save LDAP configuration (disabled - use .env file instead)
  */
 router.post('/config', async (req, res) => {
-    try {
-        const config = req.body;
-        const userId = req.body.userId; // PocketBase user ID for audit logging
-
-        // Validate required fields
-        if (!config.server || !config.port || !config.adminDN || !config.baseDN) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required configuration fields',
-            });
-        }
-
-        const savedConfig = await pocketbaseService.saveLdapConfig(config);
-
-        // Log audit event
-        if (userId) {
-            await pocketbaseService.logAudit(userId, 'update_ldap_config', 'ldap_config', {
-                server: config.server,
-                timestamp: new Date().toISOString(),
-            });
-        }
-
-        res.json({
-            success: true,
-            message: 'LDAP configuration saved successfully',
-            config: savedConfig,
-        });
-    } catch (error) {
-        console.error('Error saving config:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message || 'Failed to save LDAP configuration',
-        });
-    }
+    res.status(403).json({
+        success: false,
+        error: 'Configuration must be set in .env file. This endpoint is disabled.',
+    });
 });
 
 export default router;

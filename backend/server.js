@@ -28,7 +28,7 @@ app.get('/health', (req, res) => {
     res.json({
         status: 'ok',
         timestamp: new Date().toISOString(),
-        pocketbaseUrl: process.env.POCKETBASE_URL || 'https://pocketbase.tailsoca.duckdns.org',
+        ldapServer: process.env.LDAP_SERVER || 'Not configured',
     });
 });
 
@@ -57,7 +57,7 @@ app.listen(PORT, () => {
 ║   LDAP Management Backend Server                     ║
 ║                                                       ║
 ║   Server running on: http://localhost:${PORT}        ║
-║   PocketBase URL: ${process.env.POCKETBASE_URL || 'https://pocketbase.tailsoca.duckdns.org'}     ║
+║   LDAP Server: ${process.env.LDAP_SERVER || 'Not configured'}           ║
 ║                                                       ║
 ║   Available endpoints:                                ║
 ║   - GET  /health                                      ║
