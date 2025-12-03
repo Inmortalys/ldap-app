@@ -6,10 +6,10 @@ class ConfigService {
     constructor() {
         this.config = {
             ldap: {
-                server: process.env.LDAP_SERVER || 'ldaps://192.168.4.8',
-                port: parseInt(process.env.LDAP_PORT) || 636,
-                baseDN: process.env.LDAP_BASE_DN || 'DC=ODECGANDIA,DC=ES',
-                searchBase: process.env.LDAP_SEARCH_BASE || 'OU=Usuarios,OU=Valencia,DC=ODECGANDIA,DC=ES',
+                server: process.env.LDAP_SERVER,
+                port: parseInt(process.env.LDAP_PORT),
+                baseDN: process.env.LDAP_BASE_DN,
+                searchBase: process.env.LDAP_SEARCH_BASE,
             },
             jwt: {
                 secret: process.env.JWT_SECRET || 'default-secret-change-in-production',
