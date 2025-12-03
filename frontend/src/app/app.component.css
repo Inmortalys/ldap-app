@@ -110,27 +110,6 @@
 .user-name {
     font-size: 0.875rem;
     font-weight: 600;
-    color: white;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.user-email {
-    font-size: 0.75rem;
-    color: #94a3b8;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.btn-logout {
-    width: 100%;
-    padding: 0.625rem 1rem;
-    background: rgba(239, 68, 68, 0.1);
-    color: #fca5a5;
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    border-radius: 6px;
     font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;

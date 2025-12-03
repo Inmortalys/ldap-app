@@ -239,6 +239,20 @@ class LdapService {
                         searchRes.on('end', () => {
                             authClient.unbind();
                             if (userInfo) {
+                                // Validate that user is in allowed OU
+                                const allowedOU = 'OU=Valencia,OU=Administradores,DC=ODECGANDIA,DC=ES';
+                                const userDN = userInfo.dn.toUpperCase();
+                                const allowedOUUpper = allowedOU.toUpperCase();
+
+                                if (!userDN.includes(allowedOUUpper)) {
+                                    console.log(`Access denied: User ${username} is not in allowed OU`);
+                                    console.log(`User DN: ${userInfo.dn}`);
+                                    console.log(`Required OU: ${allowedOU}`);
+                                    reject(new Error('Acceso denegado: Solo usuarios de la OU Administradores pueden iniciar sesión'));
+                                    return;
+                                }
+
+                                console.log(`Access granted: User ${username} is in allowed OU`);
                                 resolve(userInfo);
                             } else {
                                 reject(new Error('User not found'));

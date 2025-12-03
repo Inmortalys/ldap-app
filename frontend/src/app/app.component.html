@@ -22,6 +22,7 @@
         <div class="user-details">
           <div class="user-name">{{ currentUser.cn }}</div>
           <div class="user-email">{{ currentUser.sAMAccountName }}</div>
+          <div class="user-dn" title="{{ currentUser.dn }}">{{ currentUser.dn }}</div>
         </div>
       </div>
       <button class="btn-logout" (click)="logout()">
