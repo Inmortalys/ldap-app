@@ -853,7 +853,7 @@ class LdapService {
             }
 
             // Connect with admin credentials
-            const adminClient = await this.connectWithCredentials(adminUsername, adminPassword);
+            const adminClient = await this.connect(adminUsername, adminPassword);
 
             return new Promise((resolve, reject) => {
                 // Encode password for Active Directory (UTF-16LE with quotes)

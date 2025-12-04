@@ -36,6 +36,10 @@
     </button>
   </div>
 
+  <div *ngIf="resetLinkSuccess" class="success-message">
+    ✅ {{ resetLinkSuccess }}
+  </div>
+
   <div *ngIf="error" class="error-message">
     ⚠️ {{ error }}
   </div>
@@ -91,6 +95,11 @@
             </button>
             <button class="btn-change-password" (click)="openChangePasswordModal(user)" title="Cambiar contraseña">
               🔑 Cambiar Contraseña
+            </button>
+            <button class="btn-reset-link" (click)="generateResetLink(user)" [disabled]="generatingResetLink"
+              title="Generar enlace de cambio de contraseña">
+              <span *ngIf="!generatingResetLink">🔗 Generar Enlace</span>
+              <span *ngIf="generatingResetLink">⏳</span>
             </button>
           </td>
         </tr>

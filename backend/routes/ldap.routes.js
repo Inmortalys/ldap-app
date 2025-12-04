@@ -2,6 +2,7 @@ import express from 'express';
 const router = express.Router();
 import ldapService from '../services/ldap.service.js';
 import configService from '../services/config.service.js';
+import tokenService from '../services/token.service.js';
 import { verifyToken, generateToken, decodeCredentials } from '../middleware/auth.middleware.js';
 
 /**
@@ -314,6 +315,155 @@ router.post('/config', async (req, res) => {
         success: false,
         error: 'Configuration must be set in .env file. This endpoint is disabled.',
     });
+});
+
+/**
+ * POST /api/ldap/generate-reset-token
+ * Generate a temporary password reset token for a user
+ */
+router.post('/generate-reset-token', verifyToken, async (req, res) => {
+    try {
+        const { userDN } = req.body;
+
+        if (!userDN) {
+            return res.status(400).json({
+                success: false,
+                error: 'userDN is required',
+            });
+        }
+
+        // Generate reset token
+        const tokenData = tokenService.generateResetToken(userDN);
+
+        // Construct reset URL (frontend URL)
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
+        const resetUrl = `${frontendUrl}/reset-password?token=${tokenData.token}`;
+
+        res.json({
+            success: true,
+            token: tokenData.token,
+            resetUrl,
+            expiresAt: tokenData.expiresAt,
+            userDN: tokenData.userDN
+        });
+    } catch (error) {
+        console.error('Error generating reset token:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to generate reset token',
+        });
+    }
+});
+
+/**
+ * GET /api/ldap/validate-reset-token/:token
+ * Validate a password reset token (check if it's valid, not used, not expired)
+ */
+router.get('/validate-reset-token/:token', async (req, res) => {
+    try {
+        const { token } = req.params;
+
+        if (!token) {
+            return res.status(400).json({
+                success: false,
+                error: 'Token is required',
+            });
+        }
+
+        // Validate token
+        const validation = tokenService.validateToken(token);
+
+        if (!validation.valid) {
+            return res.status(400).json({
+                success: false,
+                error: validation.error,
+            });
+        }
+
+        res.json({
+            success: true,
+            valid: true,
+            userDN: validation.userDN,
+            expiresAt: validation.expiresAt,
+        });
+    } catch (error) {
+        console.error('Error validating reset token:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to validate token',
+        });
+    }
+});
+
+/**
+ * POST /api/ldap/reset-password-with-token
+ * Reset password using a valid token
+ * Requires authentication with current credentials
+ */
+router.post('/reset-password-with-token', async (req, res) => {
+    try {
+        const { token, username, currentPassword, newPassword } = req.body;
+
+        if (!token || !username || !currentPassword || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                error: 'Token, username, currentPassword, and newPassword are required',
+            });
+        }
+
+        // Validate token first
+        const validation = tokenService.validateToken(token);
+
+        if (!validation.valid) {
+            return res.status(400).json({
+                success: false,
+                error: validation.error,
+            });
+        }
+
+        // Authenticate user with current credentials
+        let userInfo;
+        try {
+            userInfo = await ldapService.authenticateUser(username, currentPassword);
+        } catch (authError) {
+            return res.status(401).json({
+                success: false,
+                error: 'Credenciales incorrectas',
+            });
+        }
+
+        // Verify that the authenticated user matches the token's user
+        if (userInfo.dn !== validation.userDN) {
+            return res.status(403).json({
+                success: false,
+                error: 'Este enlace no es válido para este usuario',
+            });
+        }
+
+        // Change password
+        await ldapService.changeUserPasswordWithAuth(
+            userInfo.dn,
+            newPassword,
+            username,
+            currentPassword
+        );
+
+        // Mark token as used (invalidate it)
+        tokenService.markTokenAsUsed(token);
+
+        console.log(`Password reset successful for user: ${username} using token`);
+
+        res.json({
+            success: true,
+            message: 'Contraseña cambiada correctamente',
+        });
+    } catch (error) {
+        console.error('Error resetting password with token:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to reset password',
+        });
+    }
 });
 
 export default router;

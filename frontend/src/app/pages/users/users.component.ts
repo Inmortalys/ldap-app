@@ -44,6 +44,10 @@ export class UsersComponent implements OnInit {
   };
   changingPassword = false;
 
+  // Reset link generation
+  generatingResetLink = false;
+  resetLinkSuccess: string | null = null;
+
   constructor(private ldapService: LdapService) { }
 
   ngOnInit(): void {
@@ -361,5 +365,47 @@ export class UsersComponent implements OnInit {
   formatExpiryDate(user: LdapUser): string {
     if (!user.pwdExpiryDate) return 'Nunca';
     return new Date(user.pwdExpiryDate).toLocaleDateString('es-ES');
+  }
+
+  /**
+   * Generate a password reset link for a user
+   */
+  generateResetLink(user: LdapUser): void {
+    if (this.generatingResetLink) return;
+
+    this.generatingResetLink = true;
+    this.error = null;
+    this.resetLinkSuccess = null;
+
+    this.ldapService.generateResetToken(user.dn).subscribe({
+      next: (response) => {
+        this.generatingResetLink = false;
+
+        if (response.success && response.resetUrl) {
+          // Copy to clipboard
+          navigator.clipboard.writeText(response.resetUrl).then(() => {
+            const expiresAt = new Date(response.expiresAt);
+            const expiresIn = Math.round((expiresAt.getTime() - new Date().getTime()) / (1000 * 60)); // minutes
+
+            this.resetLinkSuccess = `Enlace copiado al portapapeles. Válido por ${expiresIn} minutos.`;
+
+            // Clear success message after 5 seconds
+            setTimeout(() => {
+              this.resetLinkSuccess = null;
+            }, 5000);
+          }).catch(err => {
+            console.error('Error copying to clipboard:', err);
+            this.error = 'Enlace generado pero no se pudo copiar al portapapeles';
+          });
+        } else {
+          this.error = response.error || 'Error al generar el enlace';
+        }
+      },
+      error: (err) => {
+        this.generatingResetLink = false;
+        console.error('Error generating reset link:', err);
+        this.error = err.error?.error || 'Error al generar el enlace de cambio de contraseña';
+      }
+    });
   }
 }

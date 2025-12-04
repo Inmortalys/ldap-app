@@ -74,4 +74,25 @@ export class LdapService {
     saveConfig(config: LdapConfig, userId?: string): Observable<any> {
         return this.http.post<any>(`${this.apiUrl}/ldap/config`, { ...config, userId });
     }
+
+    /**
+     * Generate a password reset token for a user
+     */
+    generateResetToken(userDN: string): Observable<any> {
+        return this.http.post<any>(`${this.apiUrl}/ldap/generate-reset-token`, { userDN });
+    }
+
+    /**
+     * Validate a password reset token
+     */
+    validateResetToken(token: string): Observable<any> {
+        return this.http.get<any>(`${this.apiUrl}/ldap/validate-reset-token/${encodeURIComponent(token)}`);
+    }
+
+    /**
+     * Reset password using a token
+     */
+    resetPasswordWithToken(data: { token: string; username: string; currentPassword: string; newPassword: string }): Observable<any> {
+        return this.http.post<any>(`${this.apiUrl}/ldap/reset-password-with-token`, data);
+    }
 }
