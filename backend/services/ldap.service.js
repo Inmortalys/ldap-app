@@ -914,21 +914,14 @@ class LdapService {
     /**
      * Unlock a locked user account
      * @param {string} userDN - Distinguished Name of the user
+     * @param {string} username - Username for authentication
+     * @param {string} password - Password for authentication
      * @returns {Promise<boolean>} True if unlock successful
      */
-    async unlockUser(userDN) {
+    async unlockUser(userDN, username, password) {
         try {
             if (!this.client) {
-                // Get admin credentials
-                const config = configService.getLdapConfig();
-                const adminDN = config.adminDN;
-                const adminPassword = config.adminPassword;
-
-                if (!adminDN || !adminPassword) {
-                    throw new Error('Admin credentials not configured');
-                }
-
-                await this.connect(adminDN, adminPassword);
+                this.client = await this.connect(username, password);
             }
 
             return new Promise((resolve, reject) => {

@@ -147,14 +147,17 @@ router.get('/users/:dn', verifyToken, async (req, res) => {
  * POST /api/ldap/users/:dn/unlock
  * Unlock a locked user account
  */
-router.post('/users/:dn/unlock', async (req, res) => {
+router.post('/users/:dn/unlock', verifyToken, async (req, res) => {
     try {
         const dn = decodeURIComponent(req.params.dn);
 
-        await ldapService.unlockUser(dn);
+        // Extract logged-in user credentials from token
+        const { username, password } = decodeCredentials(req.user.credentials);
+
+        await ldapService.unlockUser(dn, username, password);
 
         // Simple logging to console
-        console.log(`User ${dn} unlocked by admin`);
+        console.log(`User ${dn} unlocked by ${username}`);
 
         res.json({
             success: true,
