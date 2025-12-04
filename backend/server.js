@@ -1,14 +1,20 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import ldapRoutes from './routes/ldap.routes.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:4200';
 
 // Middleware
 app.use(cors({
-    origin: 'http://localhost:4200', // Angular dev server
+    origin: FRONTEND_URL,
     credentials: true,
 }));
 app.use(express.json());
@@ -22,6 +28,17 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/api/ldap', ldapRoutes);
+
+// Serve static files from Angular build (production only)
+if (process.env.NODE_ENV === 'production') {
+    const frontendPath = path.join(__dirname, '../frontend/dist/frontend/browser');
+    app.use(express.static(frontendPath));
+
+    // Fallback to index.html for SPA routing (must be after API routes)
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(frontendPath, 'index.html'));
+    });
+}
 
 // Health check endpoint
 app.get('/health', (req, res) => {
