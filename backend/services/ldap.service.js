@@ -919,7 +919,16 @@ class LdapService {
     async unlockUser(userDN) {
         try {
             if (!this.client) {
-                await this.connect();
+                // Get admin credentials
+                const config = configService.getLdapConfig();
+                const adminDN = config.adminDN;
+                const adminPassword = config.adminPassword;
+
+                if (!adminDN || !adminPassword) {
+                    throw new Error('Admin credentials not configured');
+                }
+
+                await this.connect(adminDN, adminPassword);
             }
 
             return new Promise((resolve, reject) => {
