@@ -402,12 +402,12 @@ router.get('/validate-reset-token/:token', async (req, res) => {
  */
 router.post('/reset-password-with-token', async (req, res) => {
     try {
-        const { token, username, currentPassword, newPassword } = req.body;
+        const { token, newPassword } = req.body;
 
-        if (!token || !username || !currentPassword || !newPassword) {
+        if (!token || !newPassword) {
             return res.status(400).json({
                 success: false,
-                error: 'Token, username, currentPassword, and newPassword are required',
+                error: 'Token and newPassword are required',
             });
         }
 
@@ -421,37 +421,17 @@ router.post('/reset-password-with-token', async (req, res) => {
             });
         }
 
-        // Authenticate user with current credentials
-        let userInfo;
-        try {
-            userInfo = await ldapService.authenticateUser(username, currentPassword);
-        } catch (authError) {
-            return res.status(401).json({
-                success: false,
-                error: 'Credenciales incorrectas',
-            });
-        }
-
-        // Verify that the authenticated user matches the token's user
-        if (userInfo.dn !== validation.userDN) {
-            return res.status(403).json({
-                success: false,
-                error: 'Este enlace no es válido para este usuario',
-            });
-        }
-
-        // Change password
-        await ldapService.changeUserPasswordWithAuth(
-            userInfo.dn,
-            newPassword,
-            username,
-            currentPassword
+        // Change password using admin credentials (admin override)
+        // The token itself serves as authorization
+        await ldapService.adminResetPassword(
+            validation.userDN,
+            newPassword
         );
 
         // Mark token as used (invalidate it)
         tokenService.markTokenAsUsed(token);
 
-        console.log(`Password reset successful for user: ${username} using token`);
+        console.log(`Password reset successful for userDN: ${validation.userDN} using token`);
 
         res.json({
             success: true,

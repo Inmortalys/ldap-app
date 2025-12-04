@@ -92,7 +92,7 @@ export class LdapService {
     /**
      * Reset password using a token
      */
-    resetPasswordWithToken(data: { token: string; username: string; currentPassword: string; newPassword: string }): Observable<any> {
+    resetPasswordWithToken(data: { token: string; newPassword: string }): Observable<any> {
         return this.http.post<any>(`${this.apiUrl}/ldap/reset-password-with-token`, data);
     }
 }

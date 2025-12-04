@@ -886,6 +886,32 @@ class LdapService {
     }
 
     /**
+     * Change user password using configured admin credentials (for token reset)
+     * @param {string} userDN - Distinguished Name of the user
+     * @param {string} newPassword - New password
+     * @returns {Promise<boolean>} True if password change successful
+     */
+    async adminResetPassword(userDN, newPassword) {
+        try {
+            // Get admin credentials from config
+            const config = configService.getLdapConfig();
+            const adminDN = config.adminDN;
+            const adminPassword = config.adminPassword;
+
+            if (!adminDN || !adminPassword) {
+                throw new Error('Admin credentials not configured');
+            }
+
+            // Use existing method with admin credentials
+            // Note: We pass adminDN as username because connect() handles it
+            return await this.changeUserPasswordWithAuth(userDN, newPassword, adminDN, adminPassword);
+        } catch (error) {
+            console.error('Error in admin reset password:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Unlock a locked user account
      * @param {string} userDN - Distinguished Name of the user
      * @returns {Promise<boolean>} True if unlock successful

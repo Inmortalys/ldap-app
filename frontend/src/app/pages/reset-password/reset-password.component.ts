@@ -19,11 +19,6 @@ export class ResetPasswordComponent implements OnInit {
     userDN: string = '';
     expiresAt: Date | null = null;
 
-    // Login form
-    username: string = '';
-    currentPassword: string = '';
-    authenticated: boolean = false;
-
     // Password change form
     newPassword: string = '';
     confirmPassword: string = '';
@@ -44,7 +39,6 @@ export class ResetPasswordComponent implements OnInit {
 
     // State
     validating: boolean = false;
-    authenticating: boolean = false;
     resetting: boolean = false;
     error: string | null = null;
     success: boolean = false;
@@ -92,24 +86,10 @@ export class ResetPasswordComponent implements OnInit {
         });
     }
 
-    authenticate(): void {
-        if (!this.username || !this.currentPassword) {
-            this.error = 'Por favor ingrese su usuario y contraseña actual';
-            return;
-        }
-
-        this.authenticating = true;
-        this.error = null;
-
-        // We don't actually call the backend here, we'll validate credentials
-        // when submitting the password change
-        this.authenticated = true;
-        this.authenticating = false;
-    }
-
     validatePassword(): void {
         const password = this.newPassword;
-        const username = this.username;
+        // Extract username from DN for validation if possible, or skip username check
+        const username = this.userDN ? this.userDN.split(',')[0].split('=')[1] : '';
 
         this.passwordValidation = {
             valid: true,
@@ -189,8 +169,6 @@ export class ResetPasswordComponent implements OnInit {
 
         this.ldapService.resetPasswordWithToken({
             token: this.token,
-            username: this.username,
-            currentPassword: this.currentPassword,
             newPassword: this.newPassword
         }).subscribe({
             next: (response) => {
