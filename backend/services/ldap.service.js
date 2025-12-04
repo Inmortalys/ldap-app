@@ -899,7 +899,10 @@ class LdapService {
             const adminPassword = config.adminPassword;
 
             if (!adminDN || !adminPassword) {
-                throw new Error('Admin credentials not configured');
+                const missing = [];
+                if (!adminDN) missing.push('LDAP_ADMIN_DN');
+                if (!adminPassword) missing.push('LDAP_ADMIN_PASSWORD');
+                throw new Error(`Admin credentials not configured. Missing environment variables: ${missing.join(', ')}. Please add them to your .env file.`);
             }
 
             // Use existing method with admin credentials
