@@ -129,10 +129,13 @@ class LdapService {
                     userDN = `${username}@${domain}`;
                 }
 
+                console.log(`[DEBUG] Binding to LDAP with DN: ${userDN}`);
+
                 // Bind with user credentials
                 client.bind(userDN, password, (err) => {
                     if (err) {
                         console.error('LDAP bind error:', err);
+                        console.error(`[DEBUG] Failed bind attempt with DN: ${userDN}`);
                         client.unbind();
                         reject(err);
                     } else {
@@ -853,6 +856,7 @@ class LdapService {
             }
 
             // Connect with admin credentials
+            console.log(`[DEBUG] Attempting admin connection with username: ${adminUsername}`);
             const adminClient = await this.connect(adminUsername, adminPassword);
 
             return new Promise((resolve, reject) => {
